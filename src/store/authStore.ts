@@ -13,30 +13,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email: string, password: string) => {
     try {
       const response = await apiService.login(email, password);
-      
-      // Handle different response structures
       const accessToken = response.access || response.token;
       const refreshToken = response.refresh;
-      const user = response.user || response;
 
-      if (!accessToken) {
-        throw new Error('No access token received');
-      }
+      if (!accessToken) throw new Error('No access token received');
 
       localStorage.setItem('token', accessToken);
-      if (refreshToken) {
-        localStorage.setItem('refreshToken', refreshToken);
-      }
+      if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+
+      // Fetch user profile after login
+      const profileResponse = await apiService.getProfile();
+      const user = profileResponse.user || profileResponse;
+
       localStorage.setItem('user', JSON.stringify(user));
-      
-      set({ 
-        token: accessToken, 
+      set({
+        token: accessToken,
         refreshToken,
-        user, 
+        user,
         isAuthenticated: true,
-        needsVerification: user.is_verified === false
+        needsVerification: user.is_verified === false,
       });
-      
+
       if (user.is_verified === false) {
         toast.success('Login successful! Please verify your email.');
       } else {
@@ -189,42 +186,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const token = localStorage.getItem('token');
     const refreshToken = localStorage.getItem('refreshToken');
     const userStr = localStorage.getItem('user');
-    
-    console.log('Initializing auth store...', { token: !!token, userStr: !!userStr });
-    
-    if (token && userStr) {
+
+    if (token) {
       try {
-        const user = JSON.parse(userStr);
-        console.log('Found stored user with token:', user);
-        
-        // Try to get fresh user data
-        try {
-          const profileResponse = await apiService.getProfile();
-          const freshUser = profileResponse.user || profileResponse;
-          localStorage.setItem('user', JSON.stringify(freshUser));
-          
-          set({ 
-            token, 
-            refreshToken,
-            user: freshUser, 
-            isAuthenticated: true,
-            needsVerification: freshUser.is_verified === false
-          });
-        } catch (error) {
-          // If profile fetch fails, use stored user data
-          set({ 
-            token, 
-            refreshToken,
-            user, 
-            isAuthenticated: true,
-            needsVerification: user.is_verified === false
-          });
-        }
+        const profileResponse = await apiService.getProfile();
+        const user = profileResponse.user || profileResponse;
+        localStorage.setItem('user', JSON.stringify(user));
+        set({
+          token,
+          refreshToken,
+          user,
+          isAuthenticated: true,
+          needsVerification: user.is_verified === false,
+        });
       } catch (error) {
-        // Clear invalid data
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        // fallback or logout
       }
     } else if (userStr) {
       // User exists but no token, might need verification
