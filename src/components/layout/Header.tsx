@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../ui/Button';
-import { TrendingUp, User, LogOut, Settings } from 'lucide-react';
+import { TrendingUp, User, LogOut, Settings, Zap } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuthStore();
@@ -14,9 +14,17 @@ export const Header: React.FC = () => {
     <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link to="/" className="flex items-center space-x-2">
-            <TrendingUp className="w-8 h-8 text-purple-500" />
-            <span className="text-xl font-bold text-white">CAFX Terminal</span>
+          <Link to="/" className="flex items-center space-x-2 group">
+            <div className="relative">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center transform group-hover:scale-110 transition-transform duration-200">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xl font-bold text-white tracking-tight">TradeCafx</span>
+              <span className="text-xs text-gray-400 font-medium">AI Trading Platform</span>
+            </div>
           </Link>
 
           {isAuthenticated ? (

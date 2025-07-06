@@ -19,9 +19,15 @@ interface TradingBot {
   task_id?: string;
 }
 
+interface ConnectedExchange {
+  name: string;
+  connected: boolean;
+  image?: string;
+}
+
 export const TradingBots: React.FC = () => {
   const [bots, setBots] = useState<TradingBot[]>([]);
-  const [exchanges, setExchanges] = useState<any[]>([]);
+  const [exchanges, setExchanges] = useState<ConnectedExchange[]>([]);
   const [pairs, setPairs] = useState<any[]>([]);
   const [runHours, setRunHours] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,8 +39,6 @@ export const TradingBots: React.FC = () => {
     type: 'spot' as 'spot' | 'futures',
     exchange: '',
     symbol: '',
-    api_key: '',
-    api_secret: '',
     grid_size: '',
     upper_price: '',
     lower_price: '',
@@ -47,15 +51,18 @@ export const TradingBots: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [botsResponse, exchangesResponse, pairsResponse, runHoursResponse] = await Promise.all([
+        const [botsResponse, connectedExchangesResponse, pairsResponse, runHoursResponse] = await Promise.all([
           apiService.getAllBots(),
-          apiService.getExchanges(),
+          apiService.getConnectedExchanges(),
           apiService.getPairs(),
           apiService.getBotRunHours()
         ]);
 
-        setBots(botsResponse);
-        setExchanges(exchangesResponse);
+        setBots(botsResponse.futures.concat(botsResponse.spot));
+        
+        const connected = connectedExchangesResponse.exchanges?.filter((ex: any) => ex.connected) || [];
+        setExchanges(connected);
+
         setPairs(pairsResponse);
         setRunHours(runHoursResponse);
       } catch (error) {
@@ -79,9 +86,7 @@ export const TradingBots: React.FC = () => {
     setCreating(true);
 
     try {
-      const botConfig = {
-        api_key: botForm.api_key,
-        api_secret: botForm.api_secret,
+      const botConfig: any = {
         symbol: botForm.symbol,
         grid_size: parseInt(botForm.grid_size),
         upper_price: parseFloat(botForm.upper_price),
@@ -89,11 +94,12 @@ export const TradingBots: React.FC = () => {
         investment_amount: parseFloat(botForm.investment_amount),
         run_hours: parseInt(botForm.run_hours),
         exchange: botForm.exchange,
-        ...(botForm.type === 'futures' && {
-          leverage: parseInt(botForm.leverage),
-          strategy_type: botForm.strategy_type
-        })
       };
+
+      if (botForm.type === 'futures') {
+        botConfig.leverage = parseInt(botForm.leverage);
+        botConfig.strategy_type = botForm.strategy_type;
+      }
 
       let response;
       if (botForm.type === 'futures') {
@@ -104,7 +110,7 @@ export const TradingBots: React.FC = () => {
 
       // Refresh bots list
       const botsResponse = await apiService.getAllBots();
-      setBots(botsResponse);
+      setBots(botsResponse.futures.concat(botsResponse.spot));
 
       setShowModal(false);
       setBotForm({
@@ -112,8 +118,6 @@ export const TradingBots: React.FC = () => {
         type: 'spot',
         exchange: '',
         symbol: '',
-        api_key: '',
-        api_secret: '',
         grid_size: '',
         upper_price: '',
         lower_price: '',
@@ -314,12 +318,12 @@ export const TradingBots: React.FC = () => {
                 className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required
               >
-                <option value="">Select Exchange</option>
+                <option value="">Select Connected Exchange</option>
                 {exchanges.map((exchange) => (
-                  <option key={exchange.id} value={exchange.name.toLowerCase()}>
+                  <option key={exchange.name} value={exchange.name.toLowerCase()}>
                     {exchange.name}
                   </option>
-                ))}
+                ))ж
               </select>
             </div>
           </div>

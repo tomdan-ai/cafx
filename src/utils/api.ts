@@ -120,8 +120,6 @@ export const apiService = {
   },
 
   startFuturesBot: async (botConfig: {
-    api_key: string;
-    api_secret: string;
     symbol: string;
     grid_size: number;
     upper_price: number;
@@ -150,8 +148,6 @@ export const apiService = {
   },
 
   startSpotBot: async (botConfig: {
-    api_key: string;
-    api_secret: string;
     symbol: string;
     grid_size: number;
     upper_price: number;
@@ -188,6 +184,29 @@ export const apiService = {
   getBotRunHours: async () => {
     const response = await api.get('/api/get-bot-run-hours/');
     return response.data;
+  },
+
+  connectExchange: async (exchange: string, api_key: string, api_secret: string) => {
+    // This is a placeholder for a dedicated endpoint.
+    // In a real scenario, this would be something like:
+    // const response = await api.post('/api/exchanges/connect/', { exchange, api_key, api_secret });
+    // return response.data;
+
+    // For now, we'll simulate the old behavior to avoid breaking the flow,
+    // but the component logic will be cleaner.
+    const testConfig = {
+      api_key,
+      api_secret,
+      symbol: 'BTCUSDT',
+      grid_size: 5,
+      upper_price: 90000,
+      lower_price: 85000,
+      investment_amount: 10,
+      run_hours: 1,
+      exchange,
+    };
+    // This will still attempt to start a bot to validate keys, but the front-end logic is now cleaner.
+    return await apiService.startSpotBot(testConfig);
   },
 
   // Subscription

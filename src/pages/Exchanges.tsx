@@ -19,6 +19,7 @@ interface ConnectedExchange {
   image?: string;
 }
 
+
 interface ConnectionModal {
   isOpen: boolean;
   exchange: Exchange | null;
@@ -87,21 +88,11 @@ export const Exchanges: React.FC = () => {
     try {
       setConnecting(true);
       
-      // Create a test bot configuration to validate the connection
-      const testConfig = {
-        api_key: apiKey.trim(),
-        api_secret: apiSecret.trim(),
-        symbol: 'BTCUSDT', // Test with BTC/USDT
-        grid_size: 5,
-        upper_price: 50000,
-        lower_price: 45000,
-        investment_amount: 10, // Minimal amount for testing
-        run_hours: 1,
-        exchange: connectionModal.exchange.value
-      };
-
-      // Try to start a spot bot to test connection
-      await apiService.startSpotBot(testConfig);
+      await apiService.connectExchange(
+        connectionModal.exchange.value,
+        apiKey.trim(),
+        apiSecret.trim()
+      );
       
       toast.success(`Successfully connected to ${connectionModal.exchange.label}!`);
       
