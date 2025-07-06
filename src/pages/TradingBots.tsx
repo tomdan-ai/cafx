@@ -323,28 +323,9 @@ export const TradingBots: React.FC = () => {
                   <option key={exchange.name} value={exchange.name.toLowerCase()}>
                     {exchange.name}
                   </option>
-                ))ж
+                ))}
               </select>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="API Key"
-              type="password"
-              value={botForm.api_key}
-              onChange={(e) => setBotForm({...botForm, api_key: e.target.value})}
-              placeholder="Enter API key"
-              required
-            />
-            <Input
-              label="API Secret"
-              type="password"
-              value={botForm.api_secret}
-              onChange={(e) => setBotForm({...botForm, api_secret: e.target.value})}
-              placeholder="Enter API secret"
-              required
-            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

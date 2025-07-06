@@ -117,7 +117,7 @@ export const Exchanges: React.FC = () => {
 
   const handleDisconnectExchange = async (exchangeName: string) => {
     // For now, we'll show a message since there's no direct disconnect API
-    toast.info('To disconnect, please remove your API keys from the exchange settings');
+    toast('To disconnect, please remove your API keys from the exchange settings');
   };
 
   const getStatusIcon = (status: string) => {
@@ -208,7 +208,7 @@ export const Exchanges: React.FC = () => {
                           onError={(e) => {
                             // Fallback to text if image fails
                             e.currentTarget.style.display = 'none';
-                            e.currentTarget.nextElementSibling!.style.display = 'block';
+                            (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
                           }}
                         />
                       ) : null}

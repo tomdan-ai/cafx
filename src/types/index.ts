@@ -34,6 +34,7 @@ export interface TradingBot {
 }
 
 export interface AuthState {
+  setUser: any;
   user: User | null;
   token: string | null;
   refreshToken: string | null;

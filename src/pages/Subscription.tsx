@@ -48,7 +48,8 @@ const subscriptionPlans = [
 ];
 
 export const Subscription: React.FC = () => {
-	const { user, setUser } = useAuthStore();
+	const user = useAuthStore((state) => state.user);
+	const setUser = useAuthStore((state) => state.setUser);
 	const [plans, setPlans] = useState(subscriptionPlans);
 	const [loading, setLoading] = useState(false);
 
@@ -58,11 +59,11 @@ export const Subscription: React.FC = () => {
 			isCurrent: plan.slug === user?.subscription_tier,
 		}));
 		setPlans(updatedPlans);
-	}, [user]);
+	}, [user, plans]);
 
 	const handleSubscribe = async (slug: string) => {
 		if (user?.subscription_tier === slug) {
-			toast.info('This is already your current plan.');
+			toast('This is already your current plan.');
 			return;
 		}
 

@@ -155,7 +155,7 @@ export const Dashboard: React.FC = () => {
 
   const handleViewAnalytics = () => {
     // TODO: Navigate to analytics page when implemented
-    toast.info('Analytics page coming soon!');
+    toast('Analytics page coming soon!');
   };
 
   const handleConnectExchange = () => {
