@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { DashboardStats } from '../components/dashboard/DashboardStats';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { Card } from '../components/ui/Card';
@@ -231,7 +231,8 @@ export const Dashboard: React.FC = () => {
             <span className="text-lg font-medium">Create Bot</span>
             <span className="text-sm opacity-80">Start automated trading</span>
           </Button>
-          
+          <Link to="/analytics">
+         
           <Button
             variant="outline"
             size="lg"
@@ -242,6 +243,7 @@ export const Dashboard: React.FC = () => {
             <span className="text-lg font-medium">View Analytics</span>
             <span className="text-sm opacity-80">Track your performance</span>
           </Button>
+           </Link>
           
           <Button
             variant="outline"

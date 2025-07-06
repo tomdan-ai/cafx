@@ -15,7 +15,7 @@ import {
   Zap
 } from 'lucide-react';
 import { apiService } from '../../utils/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 interface StatsCardProps {
   title: string;
@@ -357,6 +357,15 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ refreshTrigger =
           </Card>
         </div>
       )}
+
+      {/* Analytics Link - New Section */}
+      <div className="mt-8">
+        <Link to="/analytics">
+          <Button className="w-full md:w-auto">
+            View Analytics
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 };

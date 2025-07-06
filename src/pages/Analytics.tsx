@@ -128,11 +128,178 @@ export const Analytics: React.FC = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-lg">
-        <h1 className="text-3xl font-bold text-white mb-4">Analytics</h1>
-        <p className="text-lg text-gray-300">Analytics page coming soon!</p>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Analytics</h1>
+          <p className="text-gray-400 mt-1">
+            Visualize your trading performance and portfolio metrics
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <div className="flex bg-gray-800 rounded-lg overflow-hidden">
+            {(['7d', '30d', '90d', 'all'] as const).map((range) => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                className={`px-3 py-1 text-sm ${
+                  timeRange === range
+                    ? 'bg-purple-500 text-white'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                {range === 'all' ? 'All Time' : range.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            loading={refreshing}
+            disabled={refreshing}
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </div>
       </div>
+      
+      {/* Welcome Message */}
+      {user && (
+        <div className="bg-gray-800 p-4 rounded-lg">
+          <h2 className="text-2xl font-bold text-white">
+            Welcome back, {user.username}!
+          </h2>
+        </div>
+      )}
+      
+      {/* Portfolio Performance Chart */}
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Portfolio Performance</h3>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={performanceData}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+              <XAxis dataKey="date" stroke="#8884d8" />
+              <YAxis stroke="#8884d8" />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                  borderColor: 'rgba(255, 255, 255, 0.2)'
+                }}
+                formatter={(value) => [`$${value}`, 'Profit']}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="profit"
+                stroke="#82ca9d"
+                activeDot={{ r: 8 }}
+                strokeWidth={2}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+      
+      {/* Two-column layout for additional charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Bot Performance Comparison */}
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">Bot Performance</h3>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={botPerformanceData}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                <XAxis dataKey="name" stroke="#8884d8" />
+                <YAxis stroke="#8884d8" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                    borderColor: 'rgba(255, 255, 255, 0.2)'
+                  }}
+                  formatter={(value) => [`$${value}`, 'Profit']}
+                />
+                <Legend />
+                <Bar
+                  dataKey="profit"
+                  fill="#82ca9d"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+        
+        {/* Trading Pairs Distribution */}
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">Trading Pairs Distribution</h3>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                    borderColor: 'rgba(255, 255, 255, 0.2)'
+                  }}
+                />
+                <Legend />
+                <Pie
+                  data={tradingPairsData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  fill="#82ca9d"
+                  label
+                >
+                  {tradingPairsData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
+      
+      {/* Success Rates */}
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Trade Success Rates</h3>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={tradeSuccessData}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+              <XAxis dataKey="name" stroke="#8884d8" />
+              <YAxis stroke="#8884d8" />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                  borderColor: 'rgba(255, 255, 255, 0.2)'
+                }}
+                formatter={(value) => [`$${value}`, 'Profit']}
+              />
+              <Legend />
+              <Bar
+                dataKey="value"
+                fill="#82ca9d"
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
     </div>
   );
 };

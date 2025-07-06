@@ -12,6 +12,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Exchanges } from './pages/Exchanges';
 import { TradingBots } from './pages/TradingBots';
 import { Subscription } from './pages/Subscription';
+import { Analytics } from './pages/Analytics';
 
 function App() {
   const { initialize, isAuthenticated, needsVerification, user } = useAuthStore();
@@ -61,6 +62,11 @@ function App() {
           <Route path="/subscription" element={
             <ProtectedRoute>
               <Subscription />
+            </ProtectedRoute>
+          } />
+          <Route path="/analytics" element={
+            <ProtectedRoute>
+              <Analytics />
             </ProtectedRoute>
           } />
         </Route>
