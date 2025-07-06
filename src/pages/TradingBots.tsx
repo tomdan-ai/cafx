@@ -63,8 +63,9 @@ export const TradingBots: React.FC = () => {
         const connected = connectedExchangesResponse.exchanges?.filter((ex: any) => ex.connected) || [];
         setExchanges(connected);
 
-        setPairs(pairsResponse);
-        setRunHours(runHoursResponse);
+        setPairs(Array.isArray(pairsResponse) ? pairsResponse : []);
+        // Ensure runHours is an array
+        setRunHours(Array.isArray(runHoursResponse) ? runHoursResponse : [24, 48, 72, 168]); // Default values if not an array
       } catch (error) {
         console.error('Failed to fetch data:', error);
         toast.error('Failed to load data');
@@ -395,11 +396,20 @@ export const TradingBots: React.FC = () => {
                 required
               >
                 <option value="">Select Duration</option>
-                {runHours.map((hour) => (
-                  <option key={hour} value={hour}>
-                    {hour} hours
-                  </option>
-                ))}
+                {Array.isArray(runHours) && runHours.length > 0 ? (
+                  runHours.map((hour) => (
+                    <option key={hour.toString()} value={hour}>
+                      {hour} hours
+                    </option>
+                  ))
+                ) : (
+                  // Default options if runHours is not available
+                  [24, 48, 72, 168].map((hour) => (
+                    <option key={hour.toString()} value={hour}>
+                      {hour} hours
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
