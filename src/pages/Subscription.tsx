@@ -8,7 +8,7 @@ import { Check } from 'lucide-react';
 
 const subscriptionPlans = [
 	{
-		slug: 'basic',
+		slug: 'starter', // Changed from 'basic' to match API
 		name: 'Basic Plan',
 		label: 'built for beginners',
 		price: '14 Days Free',
@@ -102,6 +102,24 @@ export const Subscription: React.FC = () => {
 			toast.success(`Successfully subscribed to the ${slug} plan!`);
 		} catch (error: any) {
 			const errorMessage = error.response?.data?.detail || 'Subscription failed.';
+			toast.error(errorMessage);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	// Add this to the subscription page if needed
+	const handleCancelSubscription = async () => {
+		setLoading(true);
+		try {
+			await apiService.cancelSubscription();
+			
+			const updatedProfile = await apiService.getProfile();
+			setUser(updatedProfile);
+			
+			toast.success('Subscription cancelled successfully!');
+		} catch (error: any) {
+			const errorMessage = error.response?.data?.detail || 'Cancellation failed.';
 			toast.error(errorMessage);
 		} finally {
 			setLoading(false);
