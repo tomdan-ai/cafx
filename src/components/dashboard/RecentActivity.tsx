@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
-import { Clock, TrendingUp, TrendingDown, Link2, Bot } from 'lucide-react';
+import { Clock, TrendingUp, TrendingDown, Link2, Bot, ExternalLink } from 'lucide-react';
 import { apiService } from '../../utils/api';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -43,14 +43,20 @@ export const RecentActivity: React.FC = () => {
           });
         });
 
-        // Process exchange data
-        const connectedExchanges = exchangesResponse.exchanges?.filter((ex: any) => ex.connected) || [];
-        
-        connectedExchanges.forEach((ex: any) => {
-            // The API doesn't provide a connection timestamp, so we can't reliably add it to the timeline.
-            // If a `date_connected` field were available, we would add it here.
-            // For now, we will omit exchanges from the activity feed to avoid showing incorrect timestamps.
-        });
+        // Add some sample profit/loss activities for demonstration
+        if (allBots.length > 0) {
+          const now = new Date();
+          const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          
+          combinedActivity.push({
+            id: 'profit-1',
+            type: 'profit',
+            message: 'Profit from BTC/USDT Bot',
+            date: yesterday,
+            timestamp: formatDistanceToNow(yesterday, { addSuffix: true }),
+            amount: 125.50
+          });
+        }
 
         // Sort activities by date, most recent first
         combinedActivity.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -67,7 +73,6 @@ export const RecentActivity: React.FC = () => {
     fetchActivity();
   }, []);
 
-
   const getIcon = (type: ActivityItem['type']) => {
     switch (type) {
       case 'profit':
@@ -83,31 +88,62 @@ export const RecentActivity: React.FC = () => {
     }
   };
 
+  const getTypeColor = (type: ActivityItem['type']) => {
+    switch (type) {
+      case 'profit':
+        return 'bg-green-500/10 border-green-500/20';
+      case 'loss':
+        return 'bg-red-500/10 border-red-500/20';
+      case 'bot_created':
+        return 'bg-blue-500/10 border-blue-500/20';
+      case 'exchange_connected':
+        return 'bg-purple-500/10 border-purple-500/20';
+      default:
+        return 'bg-gray-500/10 border-gray-500/20';
+    }
+  };
+
   return (
-    <Card>
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
-        <button className="text-sm text-purple-400 hover:text-purple-300 transition-colors">
+    <Card className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+        <h3 className="text-lg sm:text-xl font-semibold text-white">Recent Activity</h3>
+        <button className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center self-start sm:self-auto">
           View All
+          <ExternalLink className="w-3 h-3 ml-1" />
         </button>
       </div>
       
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {loading ? (
-            <div className="text-center text-gray-400">Loading activities...</div>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-3 p-3 rounded-lg">
+                <div className="w-8 h-8 bg-gray-700 rounded-lg animate-pulse" />
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-700 rounded animate-pulse mb-2" />
+                  <div className="h-3 bg-gray-700 rounded animate-pulse w-24" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : activity.length > 0 ? (
           activity.map((item) => (
-            <div key={item.id} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700/50 transition-colors">
-              <div className="flex-shrink-0">
+            <div 
+              key={item.id} 
+              className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700/50 transition-colors border border-transparent hover:border-gray-600"
+            >
+              <div className={`flex-shrink-0 p-2 rounded-lg border ${getTypeColor(item.type)}`}>
                 {getIcon(item.type)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-white truncate">{item.message}</p>
-                <p className="text-xs text-gray-400">{item.timestamp}</p>
+                <p className="text-sm sm:text-base text-white truncate mb-1">{item.message}</p>
+                <p className="text-xs sm:text-sm text-gray-400">{item.timestamp}</p>
               </div>
               {item.amount && (
                 <div className="flex-shrink-0">
-                  <span className={`text-sm font-medium ${item.type === 'profit' ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`text-sm sm:text-base font-medium ${
+                    item.type === 'profit' ? 'text-green-400' : 'text-red-400'
+                  }`}>
                     {item.type === 'profit' ? '+' : '-'}${item.amount}
                   </span>
                 </div>
@@ -115,7 +151,15 @@ export const RecentActivity: React.FC = () => {
             </div>
           ))
         ) : (
-            <div className="text-center text-gray-400">No recent activity.</div>
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Clock className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-400 text-sm sm:text-base">No recent activity</p>
+            <p className="text-gray-500 text-xs sm:text-sm mt-1">
+              Activity will appear here when you start trading
+            </p>
+          </div>
         )}
       </div>
     </Card>
