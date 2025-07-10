@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
 });
-
+ //chnages made
 interface ForgotPasswordFormData {
   email: string;
 }
