@@ -7,13 +7,13 @@ import { apiService } from '../../utils/api';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
-import { Mail, ArrowLeft, TrendingUp } from 'lucide-react';
+import { Mail, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
 });
-
+ //chnages made
 interface ForgotPasswordFormData {
   email: string;
 }
@@ -50,7 +50,11 @@ export const ForgotPassword: React.FC = () => {
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <div className="flex justify-center">
-              <TrendingUp className="w-12 h-12 text-purple-500 animate-pulse" />
+              <img
+                src="/cAFXlogo.png"
+                alt="CAFX Terminal Logo"
+                className="w-12 h-12 object-contain"
+              />
             </div>
             <h2 className="mt-6 text-3xl font-extrabold text-white">
               Check Your Email
@@ -94,7 +98,11 @@ export const ForgotPassword: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center">
-            <TrendingUp className="w-12 h-12 text-purple-500" />
+            <img
+              src="/cAFXlogo.png"
+              alt="CAFX Terminal Logo"
+              className="w-12 h-12 object-contain"
+            />
           </div>
           <h2 className="mt-6 text-3xl font-extrabold text-white">
             Reset Your Password
