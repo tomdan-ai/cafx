@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/authStore';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
-import { Mail, Lock, TrendingUp } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 
 const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -58,7 +58,11 @@ export const LoginForm: React.FC = () => {
         <div className="text-center animate-fadeInUp">
           <div className="flex justify-center">
             <div className="relative">
-              <TrendingUp className="w-12 h-12 text-purple-500 animate-glow" />
+              <img
+                src="/cAFXlogo.png"
+                alt="CAFX Logo"
+                className="w-12 h-12 animate-glow"
+              />
               <div className="absolute inset-0 w-12 h-12 bg-purple-500/20 rounded-full blur-lg animate-pulse"></div>
             </div>
           </div>
