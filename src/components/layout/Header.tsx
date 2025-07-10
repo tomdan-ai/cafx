@@ -56,9 +56,11 @@ export const Header: React.FC = () => {
               {/* Logo */}
               <Link to="/" className="flex items-center space-x-2 group">
                 <div className="relative">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center transform group-hover:scale-110 transition-transform duration-200">
-                    <Zap className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
-                  </div>
+                  <img 
+                    src="/cAFXlogo.png" 
+                    alt="TradeCafx Logo" 
+                    className="w-8 h-8 sm:w-10 sm:h-10 object-contain transform group-hover:scale-110 transition-transform duration-200"
+                  />
                   <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-green-400 rounded-full animate-pulse"></div>
                 </div>
                 <div className="hidden sm:flex flex-col">
