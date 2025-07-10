@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/authStore';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
-import { Mail, Lock, User, TrendingUp } from 'lucide-react';
+import { Mail, Lock, User } from 'lucide-react';
 
 const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -67,10 +67,11 @@ export const SignupForm: React.FC = () => {
       <div className="max-w-md w-full space-y-8 relative z-10">
         <div className="text-center animate-fadeInUp">
           <div className="flex justify-center">
-            <div className="relative">
-              <TrendingUp className="w-12 h-12 text-purple-500 animate-glow" />
-              <div className="absolute inset-0 w-12 h-12 bg-purple-500/20 rounded-full blur-lg animate-pulse"></div>
-            </div>
+            <img
+              src="/cAFXlogo.png"
+              alt="CAFX Terminal Logo"
+              className="w-12 h-12 object-contain"
+            />
           </div>
           <h2 className="mt-6 text-3xl font-extrabold text-white animate-slideInUp">
             Join CAFX Terminal
