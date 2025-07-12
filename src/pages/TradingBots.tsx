@@ -36,6 +36,7 @@ export const TradingBots: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [botForm, setBotForm] = useState({
     name: '',
+    mode: 'manual' as 'auto' | 'manual', // Add bot mode
     type: 'spot' as 'spot' | 'futures',
     exchange: '',
     symbol: '',
@@ -87,19 +88,33 @@ export const TradingBots: React.FC = () => {
     setCreating(true);
 
     try {
-      const botConfig: any = {
-        symbol: botForm.symbol,
-        grid_size: parseInt(botForm.grid_size),
-        upper_price: parseFloat(botForm.upper_price),
-        lower_price: parseFloat(botForm.lower_price),
-        investment_amount: parseFloat(botForm.investment_amount),
-        run_hours: parseInt(botForm.run_hours),
-        exchange: botForm.exchange,
-      };
+      let botConfig: any;
 
-      if (botForm.type === 'futures') {
-        botConfig.leverage = parseInt(botForm.leverage);
-        botConfig.strategy_type = botForm.strategy_type;
+      if (botForm.mode === 'auto') {
+        // Auto mode - simplified config with only exchange and price
+        botConfig = {
+          mode: 'auto',
+          exchange: botForm.exchange,
+          investment_amount: parseFloat(botForm.investment_amount),
+          // Auto mode will use default settings from API
+        };
+      } else {
+        // Manual mode - full config
+        botConfig = {
+          mode: 'manual',
+          symbol: botForm.symbol,
+          grid_size: parseInt(botForm.grid_size),
+          upper_price: parseFloat(botForm.upper_price),
+          lower_price: parseFloat(botForm.lower_price),
+          investment_amount: parseFloat(botForm.investment_amount),
+          run_hours: parseInt(botForm.run_hours),
+          exchange: botForm.exchange,
+        };
+
+        if (botForm.type === 'futures') {
+          botConfig.leverage = parseInt(botForm.leverage);
+          botConfig.strategy_type = botForm.strategy_type;
+        }
       }
 
       let response;
@@ -116,6 +131,7 @@ export const TradingBots: React.FC = () => {
       setShowModal(false);
       setBotForm({
         name: '',
+        mode: 'manual',
         type: 'spot',
         exchange: '',
         symbol: '',
@@ -329,7 +345,27 @@ export const TradingBots: React.FC = () => {
           maxWidth="lg"
         >
           <form onSubmit={handleCreateBot} className="space-y-6">
+            {/* Bot Mode Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-300">Bot Mode</label>
+                <select
+                  value={botForm.mode}
+                  onChange={(e) => setBotForm({...botForm, mode: e.target.value as 'auto' | 'manual'})}
+                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  required
+                >
+                  <option value="manual">Manual Mode</option>
+                  <option value="auto">Auto Mode</option>
+                </select>
+                <p className="text-xs text-gray-400">
+                  {botForm.mode === 'auto' 
+                    ? 'AI will handle all trading parameters automatically' 
+                    : 'Configure all trading parameters manually'
+                  }
+                </p>
+              </div>
+
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-300">Bot Type</label>
                 <select
@@ -342,132 +378,157 @@ export const TradingBots: React.FC = () => {
                   <option value="futures">Futures Trading</option>
                 </select>
               </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-300">Exchange</label>
-                <select
-                  value={botForm.exchange}
-                  onChange={(e) => setBotForm({...botForm, exchange: e.target.value})}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                >
-                  <option value="">Select Connected Exchange</option>
-                  {exchanges.map((exchange) => (
-                    <option key={exchange.name} value={exchange.name.toLowerCase()}>
-                      {exchange.name}
-                    </option>
-                  ))}
-                </select>
+            </div>
+
+            {/* Exchange - Always visible */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300">Exchange</label>
+              <select
+                value={botForm.exchange}
+                onChange={(e) => setBotForm({...botForm, exchange: e.target.value})}
+                className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                required
+              >
+                <option value="">Select Connected Exchange</option>
+                {exchanges.map((exchange) => (
+                  <option key={exchange.name} value={exchange.name.toLowerCase()}>
+                    {exchange.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Investment Amount - Always visible */}
+            <Input
+              label="Investment Amount"
+              type="number"
+              step="0.01"
+              value={botForm.investment_amount}
+              onChange={(e) => setBotForm({...botForm, investment_amount: e.target.value})}
+              placeholder="Investment amount"
+              required
+            />
+
+            {/* Auto Mode Notice */}
+            {botForm.mode === 'auto' && (
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <img src="/MERLIN.png" alt="AI Mode" className="w-8 h-8 object-contain" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-400 mb-1">AI Auto Mode Enabled</h4>
+                    <p className="text-xs text-gray-300">
+                      MERLIN AI will automatically select optimal trading pairs, grid settings, 
+                      price ranges, and execution parameters based on current market conditions.
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-300">Trading Pair</label>
-                <select
-                  value={botForm.symbol}
-                  onChange={(e) => setBotForm({...botForm, symbol: e.target.value})}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                >
-                  <option value="">Select Pair</option>
-                  {pairs.map((pair) => (
-                    <option key={pair.symbol} value={pair.symbol}>
-                      {pair.symbol}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Input
-                label="Grid Size"
-                type="number"
-                value={botForm.grid_size}
-                onChange={(e) => setBotForm({...botForm, grid_size: e.target.value})}
-                placeholder="Number of grids"
-                required
-              />
-            </div>
+            {/* Manual Mode Fields - Only visible in manual mode */}
+            {botForm.mode === 'manual' && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-300">Trading Pair</label>
+                    <select
+                      value={botForm.symbol}
+                      onChange={(e) => setBotForm({...botForm, symbol: e.target.value})}
+                      className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      required
+                    >
+                      <option value="">Select Pair</option>
+                      {pairs.map((pair) => (
+                        <option key={pair.symbol} value={pair.symbol}>
+                          {pair.symbol}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <Input
+                    label="Grid Size"
+                    type="number"
+                    value={botForm.grid_size}
+                    onChange={(e) => setBotForm({...botForm, grid_size: e.target.value})}
+                    placeholder="Number of grids"
+                    required
+                  />
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Lower Price"
-                type="number"
-                step="0.01"
-                value={botForm.lower_price}
-                onChange={(e) => setBotForm({...botForm, lower_price: e.target.value})}
-                placeholder="Minimum price"
-                required
-              />
-              <Input
-                label="Upper Price"
-                type="number"
-                step="0.01"
-                value={botForm.upper_price}
-                onChange={(e) => setBotForm({...botForm, upper_price: e.target.value})}
-                placeholder="Maximum price"
-                required
-              />
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Lower Price"
+                    type="number"
+                    step="0.01"
+                    value={botForm.lower_price}
+                    onChange={(e) => setBotForm({...botForm, lower_price: e.target.value})}
+                    placeholder="Minimum price"
+                    required
+                  />
+                  <Input
+                    label="Upper Price"
+                    type="number"
+                    step="0.01"
+                    value={botForm.upper_price}
+                    onChange={(e) => setBotForm({...botForm, upper_price: e.target.value})}
+                    placeholder="Maximum price"
+                    required
+                  />
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Investment Amount"
-                type="number"
-                step="0.01"
-                value={botForm.investment_amount}
-                onChange={(e) => setBotForm({...botForm, investment_amount: e.target.value})}
-                placeholder="Investment amount"
-                required
-              />
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-300">Run Hours</label>
-                <select
-                  value={botForm.run_hours}
-                  onChange={(e) => setBotForm({...botForm, run_hours: e.target.value})}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                >
-                  <option value="">Select Duration</option>
-                  {Array.isArray(runHours) && runHours.length > 0 ? (
-                    runHours.map((hour) => (
-                      <option key={hour.toString()} value={hour}>
-                        {hour} hours
-                      </option>
-                    ))
-                  ) : (
-                    // Default options if runHours is not available
-                    [24, 48, 72, 168].map((hour) => (
-                      <option key={hour.toString()} value={hour}>
-                        {hour} hours
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-            </div>
-
-            {botForm.type === 'futures' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Leverage"
-                  type="number"
-                  value={botForm.leverage}
-                  onChange={(e) => setBotForm({...botForm, leverage: e.target.value})}
-                  placeholder="Leverage (e.g., 5)"
-                  required
-                />
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-300">Strategy Type</label>
+                  <label className="block text-sm font-medium text-gray-300">Run Hours</label>
                   <select
-                    value={botForm.strategy_type}
-                    onChange={(e) => setBotForm({...botForm, strategy_type: e.target.value})}
+                    value={botForm.run_hours}
+                    onChange={(e) => setBotForm({...botForm, run_hours: e.target.value})}
                     className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     required
                   >
-                    <option value="long">Long</option>
-                    <option value="short">Short</option>
+                    <option value="">Select Duration</option>
+                    {Array.isArray(runHours) && runHours.length > 0 ? (
+                      runHours.map((hour) => (
+                        <option key={hour.toString()} value={hour}>
+                          {hour} hours
+                        </option>
+                      ))
+                    ) : (
+                      [24, 48, 72, 168].map((hour) => (
+                        <option key={hour.toString()} value={hour}>
+                          {hour} hours
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
-              </div>
+
+                {/* Futures-specific fields for manual mode */}
+                {botForm.type === 'futures' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Leverage"
+                      type="number"
+                      value={botForm.leverage}
+                      onChange={(e) => setBotForm({...botForm, leverage: e.target.value})}
+                      placeholder="Leverage (e.g., 5)"
+                      required
+                    />
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-300">Strategy Type</label>
+                      <select
+                        value={botForm.strategy_type}
+                        onChange={(e) => setBotForm({...botForm, strategy_type: e.target.value})}
+                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        required
+                      >
+                        <option value="long">Long</option>
+                        <option value="short">Short</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             <div className="flex space-x-4">
@@ -484,7 +545,7 @@ export const TradingBots: React.FC = () => {
                 loading={creating}
                 className="flex-1"
               >
-                {creating ? 'Creating...' : 'Create & Start Bot'}
+                {creating ? 'Creating...' : `Create ${botForm.mode === 'auto' ? 'AI' : 'Manual'} Bot`}
               </Button>
             </div>
           </form>
