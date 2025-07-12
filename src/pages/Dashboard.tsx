@@ -167,7 +167,7 @@ export const Dashboard: React.FC = () => {
             Welcome back, {user?.username}!
           </h1>
           <p className="text-gray-400 mt-1 text-sm sm:text-base">
-            Here's an overview of your trading performance
+             Here's an overview of Merlins Trading Performancee
           </p>
         </div>
         <Button 

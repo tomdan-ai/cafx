@@ -31,7 +31,7 @@ export const Header: React.FC = () => {
   const navigationItems = [
     { path: '/dashboard', label: 'Dashboard', icon: Home },
     { path: '/exchanges', label: 'Exchanges', icon: TrendingUp },
-    { path: '/bots', label: 'Trading Bots', icon: Zap },
+    { path: '/bots', label: 'Trading Bots', icon: () => <img src="/MERLIN.png" alt="Trading Bots" className="w-5 h-5 object-contain" /> },
     { path: '/subscription', label: 'Subscription', icon: Settings },
   ];
 
@@ -64,8 +64,8 @@ export const Header: React.FC = () => {
                   <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-green-400 rounded-full animate-pulse"></div>
                 </div>
                 <div className="hidden sm:flex flex-col">
-                  <span className="text-lg sm:text-xl font-bold text-white tracking-tight">TradeCafx</span>
-                  <span className="text-xs text-gray-400 font-medium">AI Trading Platform</span>
+                  <span className="text-lg sm:text-xl font-bold text-white tracking-tight">CAFX</span>
+                  <span className="text-xs text-gray-400 font-medium">Merlin Trading Terminal</span>
                 </div>
               </Link>
             </div>

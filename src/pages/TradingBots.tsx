@@ -227,7 +227,7 @@ export const TradingBots: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-purple-500/20 rounded-lg">
-                  <Bot className="w-6 h-6 text-purple-400" />
+WHICHERV E I                  <img src="/MERLIN.png" alt="Trading Bot" className="w-6 h-6 object-contain" />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white">{bot.name || `${bot.pair} Bot`}</h3>

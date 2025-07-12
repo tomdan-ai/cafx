@@ -131,7 +131,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
       title: 'Active Bots',
       value: stats.active_bots.toString(),
       subtitle: `${stats.total_bots} total bots`,
-      icon: <Bot className="w-5 h-5 sm:w-6 sm:h-6" />,
+      icon: <img src="/MERLIN.png" alt="Active Bots" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />,
       onClick: () => navigate('/bots'),
       trend: stats.active_bots > 0 ? {
         value: `${Math.round((stats.active_bots / Math.max(stats.total_bots, 1)) * 100)}% active`,
@@ -185,7 +185,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
           <Card className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base sm:text-lg font-semibold text-white">Futures Bots</h3>
-              <Zap className="w-5 h-5 text-purple-400" />
+              <img src="/MERLIN.png" alt="Futures Bots" className="w-5 h-5 object-contain" />
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
@@ -237,7 +237,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
         <Card className="p-6 sm:p-8 text-center">
           <div className="max-w-md mx-auto">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Bot className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
+              <img src="/MERLIN.png" alt="No Bots" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">No Active Bots</h3>
             <p className="text-sm sm:text-base text-gray-400 mb-6">
@@ -249,7 +249,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
                 onClick={() => navigate('/bots')}
                 className="flex items-center justify-center"
               >
-                <Bot className="w-4 h-4 mr-2" />
+                <img src="/MERLIN.png" alt="Create Bot" className="w-4 h-4 mr-2 object-contain" />
                 Create Your First Bot
               </Button>
               <Button
