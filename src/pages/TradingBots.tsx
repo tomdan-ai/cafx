@@ -206,7 +206,7 @@ export const TradingBots: React.FC = () => {
 
   return (
     <div className="relative space-y-8">
-      {/* Animated Background Image */}
+      {/* Animated Background Image - Only center image, corners removed */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
           <img 
@@ -216,21 +216,6 @@ export const TradingBots: React.FC = () => {
             style={{
               animation: 'spin 20s linear infinite, bounce 3s ease-in-out infinite'
             }}
-          />
-        </div>
-        {/* Additional floating images for more effect */}
-        <div className="absolute top-20 right-20">
-          <img 
-            src="/MERLIN.png" 
-            alt="Background" 
-            className="w-32 h-32 opacity-3 animate-pulse object-contain"
-          />
-        </div>
-        <div className="absolute bottom-20 left-20">
-          <img 
-            src="/MERLIN.png" 
-            alt="Background" 
-            className="w-24 h-24 opacity-3 animate-bounce object-contain"
           />
         </div>
       </div>
