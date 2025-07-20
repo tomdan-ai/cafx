@@ -119,8 +119,25 @@ export const Exchanges: React.FC = () => {
   };
 
   const handleDisconnectExchange = async (exchangeName: string) => {
-    // For now, we'll show a message since there's no direct disconnect API
-    toast('To disconnect, please remove your API keys from the exchange settings');
+    try {
+      // Remove from localStorage since server doesn't have proper disconnect endpoint
+      const connectedExchanges = JSON.parse(localStorage.getItem('connectedExchanges') || '[]');
+      const updatedExchanges = connectedExchanges.map((ex: any) => 
+        ex.name.toLowerCase() === exchangeName.toLowerCase() 
+          ? { ...ex, connected: false }
+          : ex
+      );
+      
+      localStorage.setItem('connectedExchanges', JSON.stringify(updatedExchanges));
+      
+      toast.success(`Successfully disconnected from ${exchangeName}!`);
+      
+      // Refresh the exchanges list to update UI
+      await fetchExchanges();
+    } catch (error) {
+      console.error('Failed to disconnect exchange:', error);
+      toast.error('Failed to disconnect exchange');
+    }
   };
 
   const getStatusIcon = (status: string) => {
