@@ -96,6 +96,9 @@ export const Exchanges: React.FC = () => {
       
       toast.success(`Successfully connected to ${connectionModal.exchange.label}!`);
       
+      // Add a small delay to allow server to process the connection
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // Refresh the exchanges list
       await fetchExchanges();
       

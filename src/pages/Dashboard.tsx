@@ -45,23 +45,24 @@ export const Dashboard: React.FC = () => {
       }
 
       // Fetch data from multiple endpoints
-      const [botsResponse, exchangesResponse, userProfile] = await Promise.all([
+      const [botsResponse, connectedExchangesResponse, userProfile] = await Promise.all([
         apiService.getAllBots(),
-        apiService.getExchanges(),
-        apiService.getUserProfile().catch(() => null)
+        apiService.getConnectedExchanges(),
+        apiService.getProfile().catch(() => null)
       ]);
 
-      const allBots = botsResponse || [];
-      const exchanges = exchangesResponse || [];
-      const connectedCount = exchanges.filter(ex => ex.is_connected).length;
+      // Ensure botsResponse is an array
+      const allBots = Array.isArray(botsResponse) ? botsResponse : [];
+      const connectedExchangesData = connectedExchangesResponse || { count: 0, exchanges: [] };
+      const connectedCount = connectedExchangesData.count || connectedExchangesData.exchanges.filter((ex: any) => ex.connected).length;
 
       // Calculate totals
-      const activeBots = allBots.filter(bot => bot.is_running);
-      const runningFuturesBots = activeBots.filter(bot => bot.strategy_type === 'futures');
-      const runningSpotBots = activeBots.filter(bot => bot.strategy_type === 'spot');
+      const activeBots = allBots.filter((bot: any) => bot.is_running);
+      const runningFuturesBots = activeBots.filter((bot: any) => bot.strategy_type === 'futures');
+      const runningSpotBots = activeBots.filter((bot: any) => bot.strategy_type === 'spot');
 
       // Calculate total profit (this would normally come from the API)
-      const totalProfit = activeBots.reduce((total, bot) => {
+      const totalProfit = activeBots.reduce((total: number, bot: any) => {
         // This is a placeholder calculation - in real implementation, 
         // you'd get actual profit data from the API
         const amount = parseFloat(bot.investment_amount) || 0;

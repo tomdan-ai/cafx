@@ -167,13 +167,66 @@ export const apiService = {
 
   // Exchange and Trading Pairs
   getExchanges: async () => {
-    const response = await api.get('/api/get-exchanges/');
-    return response.data;
+    try {
+      const response = await api.get('/api/get-exchanges/');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch exchanges from API:', error);
+      // Fallback to a basic list of supported exchanges when API fails
+      return [
+        { value: 'binance', label: 'Binance', image: '/exchanges/binance.png' },
+        { value: 'bybit', label: 'Bybit', image: '/exchanges/bybit.png' },
+        { value: 'okx', label: 'OKX', image: '/exchanges/okx.png' },
+        { value: 'kucoin', label: 'KuCoin', image: '/exchanges/kucoin.png' },
+        { value: 'gate', label: 'Gate.io', image: '/exchanges/gate.png' },
+        { value: 'mexc', label: 'MEXC', image: '/exchanges/mexc.png' }
+      ];
+    }
   },
 
   getConnectedExchanges: async () => {
-    const response = await api.get('/api/get-connected-exchanges/');
-    return response.data;
+    try {
+      const response = await api.get('/api/get-connected-exchanges/');
+      const serverData = response.data;
+      
+      // Merge with locally stored connections (workaround for missing server endpoint)
+      const localConnections = JSON.parse(localStorage.getItem('connectedExchanges') || '[]');
+      
+      if (localConnections.length > 0) {
+        const mergedExchanges = serverData.exchanges.map((exchange: any) => {
+          const localConnection = localConnections.find((local: any) => 
+            local.name.toLowerCase() === exchange.name.toLowerCase()
+          );
+          
+          return {
+            ...exchange,
+            connected: localConnection ? localConnection.connected : exchange.connected
+          };
+        });
+        
+        const connectedCount = mergedExchanges.filter((ex: any) => ex.connected).length;
+        
+        return {
+          ...serverData,
+          count: connectedCount,
+          exchanges: mergedExchanges
+        };
+      }
+      
+      return serverData;
+    } catch (error: any) {
+      console.error('Failed to fetch connected exchanges from API:', error);
+      // Fallback to locally stored connections when API fails
+      const localConnections = JSON.parse(localStorage.getItem('connectedExchanges') || '[]');
+      return { 
+        count: localConnections.filter((ex: any) => ex.connected).length,
+        exchanges: localConnections.map((local: any) => ({
+          name: local.name,
+          connected: local.connected,
+          image: '' // No image data in local storage
+        }))
+      };
+    }
   },
 
   getPairs: async () => {
@@ -187,26 +240,58 @@ export const apiService = {
   },
 
   connectExchange: async (exchange: string, api_key: string, api_secret: string) => {
-    // This is a placeholder for a dedicated endpoint.
-    // In a real scenario, this would be something like:
-    // const response = await api.post('/api/exchanges/connect/', { exchange, api_key, api_secret });
-    // return response.data;
-
-    // For now, we'll simulate the old behavior to avoid breaking the flow,
-    // but the component logic will be cleaner.
-    const testConfig = {
-      api_key,
-      api_secret,
-      symbol: 'BTCUSDT',
-      grid_size: 5,
-      upper_price: 90000,
-      lower_price: 85000,
-      investment_amount: 10,
-      run_hours: 1,
-      exchange,
-    };
-    // This will still attempt to start a bot to validate keys, but the front-end logic is now cleaner.
-    return await apiService.startSpotBot(testConfig);
+    try {
+      // Try the dedicated connect endpoint first
+      const response = await api.post('/api/exchanges/connect/', { 
+        exchange, 
+        api_key, 
+        api_secret 
+      });
+      return response.data;
+    } catch (error: any) {
+      // If the dedicated endpoint doesn't exist, fall back to the test method
+      console.log('Dedicated connect endpoint not available, using test method');
+      
+      const testConfig = {
+        api_key,
+        api_secret,
+        symbol: 'BTCUSDT',
+        grid_size: 5,
+        upper_price: 90000,
+        lower_price: 85000,
+        investment_amount: 10,
+        run_hours: 24,
+        exchange,
+      };
+      
+      // Test the credentials by starting a bot, then immediately stop it
+      const botResult = await apiService.startSpotBot(testConfig);
+      
+      // If bot start was successful, try to stop it immediately
+      if (botResult && botResult.task_id) {
+        try {
+          await apiService.stopSpotBot(botResult.task_id);
+        } catch (stopError) {
+          console.warn('Could not stop test bot:', stopError);
+        }
+      }
+      
+      // Store connection info locally since server doesn't have proper endpoint
+      if (botResult) {
+        const connectedExchanges = JSON.parse(localStorage.getItem('connectedExchanges') || '[]');
+        const existingIndex = connectedExchanges.findIndex((ex: any) => ex.name.toLowerCase() === exchange.toLowerCase());
+        
+        if (existingIndex >= 0) {
+          connectedExchanges[existingIndex] = { name: exchange, connected: true, api_key, timestamp: Date.now() };
+        } else {
+          connectedExchanges.push({ name: exchange, connected: true, api_key, timestamp: Date.now() });
+        }
+        
+        localStorage.setItem('connectedExchanges', JSON.stringify(connectedExchanges));
+      }
+      
+      return botResult;
+    }
   },
 
   // Subscription
