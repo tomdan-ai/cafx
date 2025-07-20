@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DashboardStats } from '../components/dashboard/DashboardStats';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { apiService } from '../utils/api';
-import { Plus, BarChart3, Zap, TrendingUp, Link2, RefreshCw } from 'lucide-react';
+import { Plus, BarChart3, RefreshCw, Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface DashboardStatsType {
@@ -19,20 +19,11 @@ interface DashboardStatsType {
   running_spot_bots: number;
 }
 
-interface BotData {
-  id: number;
-  exchange: string;
-  symbol: string;
-  investment_amount: string;
-  is_running: boolean;
-  date_created: string;
-  strategy_type: string;
-}
-
 export const Dashboard: React.FC = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStatsType | null>(null);
+  const [activeBots, setActiveBots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -57,23 +48,33 @@ export const Dashboard: React.FC = () => {
       const connectedCount = connectedExchangesData.count || connectedExchangesData.exchanges.filter((ex: any) => ex.connected).length;
 
       // Calculate totals
-      const activeBots = allBots.filter((bot: any) => bot.is_running);
-      const runningFuturesBots = activeBots.filter((bot: any) => bot.strategy_type === 'futures');
-      const runningSpotBots = activeBots.filter((bot: any) => bot.strategy_type === 'spot');
+      const activeBotsData = allBots.filter((bot: any) => bot.is_running);
+      const runningFuturesBots = activeBotsData.filter((bot: any) => bot.strategy_type === 'futures');
+      const runningSpotBots = activeBotsData.filter((bot: any) => bot.strategy_type === 'spot');
+      
+      // Store active bots in state for rendering
+      setActiveBots(activeBotsData);
 
-      // Calculate total profit (this would normally come from the API)
-      const totalProfit = activeBots.reduce((total: number, bot: any) => {
-        // This is a placeholder calculation - in real implementation, 
-        // you'd get actual profit data from the API
+      // Calculate total profit from real bot data
+      const totalProfit = activeBotsData.reduce((total: number, bot: any) => {
+        // Use actual profit data if available, otherwise calculate based on performance
+        const profit = bot.total_profit || bot.profit || 0;
         const amount = parseFloat(bot.investment_amount) || 0;
-        const randomProfit = amount * (Math.random() * 0.1 - 0.05); // ±5% random profit for demo
-        return total + randomProfit;
+        
+        // If no profit data, calculate based on bot performance metrics
+        if (profit === 0 && amount > 0) {
+          // Use bot's actual performance data if available
+          const performance = bot.performance_percentage || 0;
+          return total + (amount * (performance / 100));
+        }
+        
+        return total + profit;
       }, 0);
 
       const subscriptionTier = userProfile?.subscription_tier || user?.subscription_tier || 'starter';
 
       const dashboardStats: DashboardStatsType = {
-        active_bots: activeBots.length,
+        active_bots: activeBotsData.length,
         total_profit: Math.round(totalProfit * 100) / 100, // Round to 2 decimal places
         connected_exchanges: connectedCount,
         subscription_tier: subscriptionTier,
@@ -186,6 +187,82 @@ export const Dashboard: React.FC = () => {
 
       {/* Stats */}
       <DashboardStats stats={stats} />
+
+      {/* Active Trades */}
+      <Card className="p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Active Trades</h2>
+        {stats.active_bots > 0 ? (
+          <div className="space-y-3">
+            {/* This would be populated with actual active bot data */}
+            <div className="text-sm text-gray-400 mb-3">
+              {stats.active_bots} active trading bot{stats.active_bots !== 1 ? 's' : ''} running
+            </div>
+            <div className="grid gap-3">
+              {/* Display actual active bot data */}
+              {activeBots.slice(0, 3).map((bot: any, index: number) => {
+                const profit = bot.total_profit || bot.profit || 0;
+                const amount = parseFloat(bot.investment_amount) || 0;
+                const performance = bot.performance_percentage || 0;
+                const displayProfit = profit !== 0 ? profit : (amount * (performance / 100));
+                const isPositive = displayProfit >= 0;
+                
+                return (
+                  <div key={bot.id || index} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-2 h-2 rounded-full animate-pulse ${
+                        isPositive ? 'bg-green-400' : 'bg-red-400'
+                      }`}></div>
+                      <div>
+                        <div className="text-white font-medium">
+                          {bot.symbol || `${bot.exchange} Bot`}
+                        </div>
+                        <div className="text-sm text-gray-400">
+                          Running • {bot.strategy_type === 'futures' ? 'Futures' : 'Spot'} Trading
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`font-medium ${
+                        isPositive ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {isPositive ? '+' : ''}${displayProfit.toFixed(2)}
+                      </div>
+                      <div className="text-xs text-gray-400">Total</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {stats.active_bots > 3 && (
+              <div className="text-center">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate('/trading-bots')}
+                  className="text-purple-400 border-purple-400 hover:bg-purple-400 hover:text-white"
+                >
+                  View All {stats.active_bots} Active Bots
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="text-gray-400 mb-4">
+              <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>No active trades running</p>
+              <p className="text-sm mt-1">Start a trading bot to see your active trades here</p>
+            </div>
+            <Button 
+              onClick={() => navigate('/trading-bots')}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Start Trading Bot
+            </Button>
+          </div>
+        )}
+      </Card>
 
       {/* Quick Actions */}
       <Card className="p-4 sm:p-6">

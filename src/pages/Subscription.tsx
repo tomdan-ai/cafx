@@ -4,7 +4,8 @@ import { Button } from '../components/ui/Button';
 import { apiService } from '../utils/api';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
-import { Check } from 'lucide-react';
+import { Check, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const subscriptionPlans = [
     {
@@ -73,6 +74,7 @@ const subscriptionPlans = [
 ];
 
 export const Subscription: React.FC = () => {
+    const navigate = useNavigate();
     const user = useAuthStore((state) => state.user);
     const setUser = useAuthStore((state) => state.setUser);
     const [plans, setPlans] = useState(subscriptionPlans);
@@ -100,7 +102,19 @@ export const Subscription: React.FC = () => {
             const updatedProfile = await apiService.getProfile();
             setUser(updatedProfile);
 
-            toast.success(`Successfully subscribed to the ${slug} plan!`);
+            // Update the plans state to reflect the new subscription
+            const updatedPlans = subscriptionPlans.map((plan) => ({
+                ...plan,
+                isCurrent: plan.slug === slug,
+            }));
+            setPlans(updatedPlans);
+
+            toast.success(`Successfully subscribed to the ${slug} plan! 🎉`);
+            
+            // Optional: Navigate back to dashboard after successful subscription
+            setTimeout(() => {
+                navigate('/dashboard');
+            }, 2000);
         } catch (error: any) {
             const errorMessage = error.response?.data?.detail || 'Subscription failed.';
             toast.error(errorMessage);
@@ -130,6 +144,17 @@ export const Subscription: React.FC = () => {
     return (
         <div className="min-h-screen bg-black py-12 px-4">
             <div className="max-w-7xl mx-auto">
+                {/* Close button */}
+                <div className="flex justify-end mb-4">
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        className="p-2 text-gray-400 hover:text-white transition-colors duration-200"
+                        title="Close"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                
                 <div className="text-center space-y-4 mb-16">
                     <h1 className="text-4xl font-bold text-white">Choose Your Plan</h1>
                     <p className="text-lg text-gray-400">

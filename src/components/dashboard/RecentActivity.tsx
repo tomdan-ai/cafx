@@ -43,18 +43,35 @@ export const RecentActivity: React.FC = () => {
           });
         });
 
-        // Add some sample profit/loss activities for demonstration
+        // Generate realistic profit/loss activities based on bot performance
         if (allBots.length > 0) {
           const now = new Date();
-          const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          const activeBots = allBots.filter((bot: any) => bot.is_running);
           
-          combinedActivity.push({
-            id: 'profit-1',
-            type: 'profit',
-            message: 'Profit from BTC/USDT Bot',
-            date: yesterday,
-            timestamp: formatDistanceToNow(yesterday, { addSuffix: true }),
-            amount: 125.50
+          activeBots.forEach((bot: any, index: number) => {
+            const profit = bot.total_profit || bot.profit || 0;
+            const amount = parseFloat(bot.investment_amount) || 0;
+            const performance = bot.performance_percentage || 0;
+            
+            // Calculate display profit
+            let displayProfit = profit;
+            if (profit === 0 && amount > 0) {
+              displayProfit = amount * (performance / 100);
+            }
+            
+            // Only add activity if there's meaningful profit/loss data
+            if (Math.abs(displayProfit) > 0.01) {
+              const activityDate = new Date(now.getTime() - (index + 1) * 2 * 60 * 60 * 1000); // Spread activities over time
+              
+              combinedActivity.push({
+                id: `profit-${bot.id || index}`,
+                type: displayProfit >= 0 ? 'profit' : 'loss',
+                message: `${displayProfit >= 0 ? 'Profit' : 'Loss'} from ${bot.symbol || bot.exchange} ${bot.strategy_type === 'futures' ? 'Futures' : 'Spot'} Bot`,
+                date: activityDate,
+                timestamp: formatDistanceToNow(activityDate, { addSuffix: true }),
+                amount: Math.abs(displayProfit)
+              });
+            }
           });
         }
 

@@ -200,7 +200,51 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           needsVerification: user.is_verified === false,
         });
       } catch (error) {
-        // fallback or logout
+        console.error('Failed to validate token on refresh:', error);
+        // Try to refresh token if available
+        if (refreshToken) {
+          try {
+            const refreshResponse = await apiService.refreshToken(refreshToken);
+            const newToken = refreshResponse.access;
+            localStorage.setItem('token', newToken);
+            
+            // Retry getting profile with new token
+            const profileResponse = await apiService.getProfile();
+            const user = profileResponse.user || profileResponse;
+            localStorage.setItem('user', JSON.stringify(user));
+            set({
+              token: newToken,
+              refreshToken,
+              user,
+              isAuthenticated: true,
+              needsVerification: user.is_verified === false,
+            });
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+            // Clear invalid tokens and logout
+            localStorage.removeItem('token');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+            set({
+              token: null,
+              refreshToken: null,
+              user: null,
+              isAuthenticated: false,
+              needsVerification: false,
+            });
+          }
+        } else {
+          // No refresh token, clear everything
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          set({
+            token: null,
+            refreshToken: null,
+            user: null,
+            isAuthenticated: false,
+            needsVerification: false,
+          });
+        }
       }
     } else if (userStr) {
       // User exists but no token, might need verification
