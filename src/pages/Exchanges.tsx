@@ -321,14 +321,35 @@ export const Exchanges: React.FC = () => {
           </div>
 
           <div className="space-y-4">
+            {/* Important Notice */}
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+              <div className="flex items-start space-x-2">
+                <div className="w-5 h-5 bg-yellow-500/20 rounded-full flex items-center justify-center mt-0.5">
+                  <span className="text-yellow-400 text-xs font-bold">!</span>
+                </div>
+                <div className="text-sm text-yellow-200">
+                  <p className="font-medium mb-1">Use Exchange API Credentials Only</p>
+                  <p className="text-xs text-yellow-300/80">
+                    Enter your exchange API key and secret (not email/password). 
+                    API keys are typically 32+ characters long and contain alphanumeric characters.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <Input
               label="API Key"
               type="text"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your API key"
+              placeholder="Enter your exchange API key (32+ characters)"
               icon={<Key className="w-5 h-5 text-gray-400" />}
             />
+            {apiKey && (apiKey.includes('@') || apiKey.length < 16) && (
+              <p className="text-red-400 text-xs mt-1">
+                ⚠️ This doesn't look like a valid API key. Please use your exchange API credentials.
+              </p>
+            )}
 
             <div className="relative">
               <Input
@@ -336,7 +357,7 @@ export const Exchanges: React.FC = () => {
                 type={showSecret ? "text" : "password"}
                 value={apiSecret}
                 onChange={(e) => setApiSecret(e.target.value)}
-                placeholder="Enter your API secret"
+                placeholder="Enter your exchange API secret (32+ characters)"
                 icon={<Key className="w-5 h-5 text-gray-400" />}
               />
               <button
@@ -347,6 +368,11 @@ export const Exchanges: React.FC = () => {
                 {showSecret ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
+            {apiSecret && (apiSecret.includes('@') || apiSecret.length < 16) && (
+              <p className="text-red-400 text-xs mt-1">
+                ⚠️ This doesn't look like a valid API secret. Please use your exchange API credentials.
+              </p>
+            )}
           </div>
 
           <div className="flex space-x-3">

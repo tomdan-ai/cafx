@@ -106,17 +106,40 @@ export const apiService = {
 
   // Bot Management
   getAllBots: async (spot?: boolean) => {
-    const params = spot !== undefined ? { spot: spot.toString() } : {};
-    const response = await api.get('/api/bots/', { params });
-    return response.data;
+    const response = await api.get('/api/bots/', { 
+      params: spot ? { spot: 'true' } : undefined 
+    });
+    // Add type property to each bot based on which array it came from
+    const futuresBots = (response.data.futures || []).map((bot: any) => ({ 
+      ...bot,
+      type: 'futures',
+      // Map fields to match expected frontend format
+      profit_loss: bot.profit_loss || 0,
+      status: bot.is_running ? 'running' : 'stopped',
+      created_at: bot.date_created,
+      updated_at: bot.date_updated
+    }));
+    
+    const spotBots = (response.data.spot || []).map((bot: any) => ({
+      ...bot,
+      type: 'spot',
+      // Map fields to match expected frontend format
+      profit_loss: bot.profit_loss || 0,
+      status: bot.is_running ? 'running' : 'stopped',
+      created_at: bot.date_created,
+      updated_at: bot.date_updated
+    }));
+    
+    return { futures: futuresBots, spot: spotBots };
   },
 
   getFuturesBots: async (active?: boolean, exchange?: string) => {
-    const params: any = {};
-    if (active !== undefined) params.active = active;
+    const params: Record<string, any> = {};
+    if (active !== undefined) params.active = active.toString();
     if (exchange) params.exchange = exchange;
+    
     const response = await api.get('/api/futures/bots/', { params });
-    return response.data;
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   startFuturesBot: async (botConfig: {
@@ -129,8 +152,27 @@ export const apiService = {
     strategy_type: string;
     run_hours: number;
     exchange: string;
+    api_key?: string;
+    api_secret?: string;
   }) => {
-    const response = await api.post('/api/futures/start-bot/', botConfig);
+    const { api_key, api_secret, ...config } = botConfig;
+    const credentials = {
+      api_key: api_key || localStorage.getItem('exchange_api_key') || '',
+      api_secret: api_secret || localStorage.getItem('exchange_api_secret') || ''
+    };
+    
+    const response = await api.post('/api/futures/start-bot', {
+      ...config,
+      ...credentials,
+      // Ensure required fields are in correct format
+      upper_price: Number(config.upper_price),
+      lower_price: Number(config.lower_price),
+      investment_amount: Number(config.investment_amount),
+      leverage: Number(config.leverage),
+      grid_size: Number(config.grid_size),
+      run_hours: Number(config.run_hours)
+    });
+    
     return response.data;
   },
 
@@ -140,11 +182,22 @@ export const apiService = {
   },
 
   getSpotBots: async (active?: boolean, exchange?: string) => {
-    const params: any = {};
-    if (active !== undefined) params.active = active;
-    if (exchange) params.exchange = exchange;
-    const response = await api.get('/api/spot/bots/', { params });
-    return response.data;
+    // Note: The API doesn't have a dedicated spot bots endpoint in the docs
+    // We'll use the main bots endpoint with spot=true filter
+    const response = await api.get('/api/bots/', { params: { spot: 'true' } });
+    let spotBots = response.data.spot || [];
+    
+    // Apply additional filtering if needed
+    if (active !== undefined) {
+      spotBots = spotBots.filter((bot: any) => bot.is_running === active);
+    }
+    if (exchange) {
+      spotBots = spotBots.filter((bot: any) => 
+        bot.exchange?.toLowerCase() === exchange.toLowerCase()
+      );
+    }
+    
+    return spotBots;
   },
 
   startSpotBot: async (botConfig: {
@@ -155,13 +208,37 @@ export const apiService = {
     investment_amount: number;
     run_hours: number;
     exchange: string;
+    api_key?: string;
+    api_secret?: string;
   }) => {
-    const response = await api.post('/api/spot/start-spot/', botConfig);
+    const { api_key, api_secret, ...config } = botConfig;
+    const credentials = {
+      api_key: api_key || localStorage.getItem('exchange_api_key') || '',
+      api_secret: api_secret || localStorage.getItem('exchange_api_secret') || ''
+    };
+    
+    // Note: The API doesn't have a dedicated spot start endpoint in the docs
+    // Using futures endpoint as a fallback, but this should be updated when the endpoint is available
+    const response = await api.post('/api/futures/start-bot', {
+      ...config,
+      ...credentials,
+      // Set default leverage to 1 for spot
+      leverage: 1,
+      // Ensure required fields are in correct format
+      upper_price: Number(config.upper_price),
+      lower_price: Number(config.lower_price),
+      investment_amount: Number(config.investment_amount),
+      grid_size: Number(config.grid_size),
+      run_hours: Number(config.run_hours)
+    });
+    
     return response.data;
   },
 
   stopSpotBot: async (task_id: string) => {
-    const response = await api.post('/api/spot/stop-spot/', { task_id });
+    // Note: The API doesn't have a dedicated spot stop endpoint in the docs
+    // Using futures endpoint as a fallback, but this should be updated when the endpoint is available
+    const response = await api.post('/api/futures/stop-bot/', { task_id });
     return response.data;
   },
 
@@ -169,17 +246,30 @@ export const apiService = {
   getExchanges: async () => {
     try {
       const response = await api.get('/api/get-exchanges/');
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch exchanges from API:', error);
-      // Fallback to a basic list of supported exchanges when API fails
+      
+      // Ensure the response matches the expected format
+      if (Array.isArray(response.data)) {
+        return response.data.map((exchange: any) => ({
+          value: exchange.value || exchange.name || '',
+          label: exchange.label || exchange.name || '',
+          image: exchange.image || `https://cryptologos.cc/logos/${(exchange.value || exchange.name || '').toLowerCase()}-logo.png`
+        }));
+      }
+      
+      // Fallback to default exchanges if response format is unexpected
+      console.warn('Unexpected API response format for exchanges');
       return [
-        { value: 'binance', label: 'Binance', image: '/exchanges/binance.png' },
-        { value: 'bybit', label: 'Bybit', image: '/exchanges/bybit.png' },
-        { value: 'okx', label: 'OKX', image: '/exchanges/okx.png' },
-        { value: 'kucoin', label: 'KuCoin', image: '/exchanges/kucoin.png' },
-        { value: 'gate', label: 'Gate.io', image: '/exchanges/gate.png' },
-        { value: 'mexc', label: 'MEXC', image: '/exchanges/mexc.png' }
+        { value: 'binance', label: 'Binance', image: 'https://cryptologos.cc/logos/bnb-bnb-logo.png' },
+        { value: 'bybit', label: 'Bybit', image: 'https://cryptologos.cc/logos/bybit-exchange-token-bytedance-token-logo.png' },
+        { value: 'bitget', label: 'Bitget', image: 'https://cryptologos.cc/logos/bitget-token-bgb-logo.png' },
+      ];
+    } catch (error) {
+      console.error('Error fetching exchanges:', error);
+      // Return default exchanges if API fails
+      return [
+        { value: 'binance', label: 'Binance', image: 'https://cryptologos.cc/logos/bnb-bnb-logo.png' },
+        { value: 'bybit', label: 'Bybit', image: 'https://cryptologos.cc/logos/bybit-exchange-token-bytedance-token-logo.png' },
+        { value: 'bitget', label: 'Bitget', image: 'https://cryptologos.cc/logos/bitget-token-bgb-logo.png' },
       ];
     }
   },
@@ -187,115 +277,210 @@ export const apiService = {
   getConnectedExchanges: async () => {
     try {
       const response = await api.get('/api/get-connected-exchanges/');
-      const serverData = response.data;
       
-      // Merge with locally stored connections (workaround for missing server endpoint)
-      const localConnections = JSON.parse(localStorage.getItem('connectedExchanges') || '[]');
-      
-      if (localConnections.length > 0) {
-        const mergedExchanges = serverData.exchanges.map((exchange: any) => {
-          const localConnection = localConnections.find((local: any) => 
-            local.name.toLowerCase() === exchange.name.toLowerCase()
-          );
-          
-          return {
-            ...exchange,
-            connected: localConnection ? localConnection.connected : exchange.connected
-          };
-        });
-        
-        const connectedCount = mergedExchanges.filter((ex: any) => ex.connected).length;
-        
-        return {
-          ...serverData,
-          count: connectedCount,
-          exchanges: mergedExchanges
-        };
+      // Handle the expected response format
+      if (response.data && 'exchanges' in response.data && 'count' in response.data) {
+        return response.data.exchanges.map((exchange: any) => ({
+          name: exchange.name || '',
+          connected: exchange.connected || false,
+          image: exchange.image || `https://cryptologos.cc/logos/${(exchange.name || '').toLowerCase()}-logo.png`
+        }));
       }
       
-      return serverData;
-    } catch (error: any) {
-      console.error('Failed to fetch connected exchanges from API:', error);
-      // Fallback to locally stored connections when API fails
-      const localConnections = JSON.parse(localStorage.getItem('connectedExchanges') || '[]');
-      return { 
-        count: localConnections.filter((ex: any) => ex.connected).length,
-        exchanges: localConnections.map((local: any) => ({
-          name: local.name,
-          connected: local.connected,
-          image: '' // No image data in local storage
-        }))
-      };
+      // Fallback if the response doesn't match the expected format
+      console.warn('Unexpected API response format for connected exchanges');
+      return [];
+      
+    } catch (error) {
+      console.error('Error fetching connected exchanges:', error);
+      // Return empty array if API fails
+      return [];
     }
   },
 
   getPairs: async () => {
-    const response = await api.get('/api/get-pairs/');
-    return response.data;
-  },
-
-  getBotRunHours: async () => {
-    const response = await api.get('/api/get-bot-run-hours/');
-    return response.data;
-  },
-
-  connectExchange: async (exchange: string, api_key: string, api_secret: string) => {
     try {
-      // Try the dedicated connect endpoint first
-      const response = await api.post('/api/exchanges/connect/', { 
-        exchange, 
-        api_key, 
-        api_secret 
-      });
-      return response.data;
-    } catch (error: any) {
-      // If the dedicated endpoint doesn't exist, fall back to the test method
-      console.log('Dedicated connect endpoint not available, using test method');
+      const response = await api.get('/api/get-pairs/');
       
-      const testConfig = {
-        api_key,
-        api_secret,
-        symbol: 'BTCUSDT',
-        grid_size: 5,
-        upper_price: 90000,
-        lower_price: 85000,
-        investment_amount: 10,
-        run_hours: 24,
-        exchange,
-      };
-      
-      // Test the credentials by starting a bot, then immediately stop it
-      const botResult = await apiService.startSpotBot(testConfig);
-      
-      // If bot start was successful, try to stop it immediately
-      if (botResult && botResult.task_id) {
-        try {
-          await apiService.stopSpotBot(botResult.task_id);
-        } catch (stopError) {
-          console.warn('Could not stop test bot:', stopError);
-        }
+      // Ensure the response matches the expected format
+      if (Array.isArray(response.data)) {
+        return response.data.map((pair: any) => ({
+          value: pair.value || pair.symbol || '',
+          label: pair.label || pair.symbol || ''
+        }));
       }
       
-      // Store connection info locally since server doesn't have proper endpoint
-      if (botResult) {
-        const connectedExchanges = JSON.parse(localStorage.getItem('connectedExchanges') || '[]');
-        const existingIndex = connectedExchanges.findIndex((ex: any) => ex.name.toLowerCase() === exchange.toLowerCase());
-        
-        if (existingIndex >= 0) {
-          connectedExchanges[existingIndex] = { name: exchange, connected: true, api_key, timestamp: Date.now() };
-        } else {
-          connectedExchanges.push({ name: exchange, connected: true, api_key, timestamp: Date.now() });
-        }
-        
-        localStorage.setItem('connectedExchanges', JSON.stringify(connectedExchanges));
-      }
+      // Fallback to default pairs if response format is unexpected
+      console.warn('Unexpected API response format for trading pairs');
+      return [
+        { value: 'BTCUSDT', label: 'BTC/USDT' },
+        { value: 'ETHUSDT', label: 'ETH/USDT' },
+        { value: 'BNBUSDT', label: 'BNB/USDT' },
+      ];
       
-      return botResult;
+    } catch (error) {
+      console.error('Error fetching trading pairs:', error);
+      // Return default pairs if API fails
+      return [
+        { value: 'BTCUSDT', label: 'BTC/USDT' },
+        { value: 'ETHUSDT', label: 'ETH/USDT' },
+        { value: 'BNBUSDT', label: 'BNB/USDT' },
+      ];
     }
   },
 
-  // Subscription
-  subscribe: async (subscription_slug: string) => {
+  getBotRunHours: async () => {
+    try {
+      const response = await api.get('/api/get-bot-run-hours/');
+      
+      // Ensure the response matches the expected format
+      if (response.data && Array.isArray(response.data.hours)) {
+        return response.data.hours;
+      }
+      
+      // Fallback to default hours if response format is unexpected
+      console.warn('Unexpected API response format for bot run hours');
+      return [24, 48, 72];
+      
+    } catch (error) {
+      console.error('Error fetching bot run hours:', error);
+      // Return default hours if API fails
+      return [24, 48, 72];
+    }
+  },
+
+  connectExchange: async (exchange: string, api_key: string, api_secret: string) => {
+    // Validate input format first
+    if (!api_key || !api_secret || api_key.trim().length === 0 || api_secret.trim().length === 0) {
+      throw new Error('API key and secret are required');
+    }
+    
+    // Basic format validation for API keys (should not look like email/password)
+    if (api_key.includes('@') || api_key.includes(' ') || api_secret.includes('@') || api_secret.includes(' ')) {
+      throw new Error('Invalid API key format. Please provide valid exchange API credentials, not email/password.');
+    }
+    
+    // API keys should typically be longer than typical passwords
+    if (api_key.length < 16 || api_secret.length < 16) {
+      throw new Error('API key and secret appear to be too short. Please verify you are using exchange API credentials.');
+    }
+
+    // Function to test the connection by starting and stopping a test bot
+    const testConnection = async () => {
+      try {
+        // Create a test bot configuration
+        const testConfig = {
+          exchange: exchange.toLowerCase(),
+          symbol: 'BTCUSDT',
+          grid_size: 5,
+          upper_price: 90000,
+          lower_price: 85000,
+          investment_amount: 10,
+          leverage: 1,
+          strategy_type: 'long',
+          run_hours: 1, // Minimum run time
+          api_key: api_key.trim(),
+          api_secret: api_secret.trim()
+        };
+        
+        // Test the credentials by starting a bot
+        const botResult = await apiService.startFuturesBot(testConfig);
+        
+        if (!botResult?.task_id) {
+          throw new Error('Failed to start test bot - invalid response from server');
+        }
+        
+        // Try to stop the test bot immediately
+        try {
+          await apiService.stopFuturesBot(botResult.task_id);
+        } catch (stopError) {
+          console.warn('Warning: Could not stop test bot:', stopError);
+          // Continue even if we can't stop the bot - the main goal was to validate credentials
+        }
+        
+        // Store the connection info in local storage
+        const connectedExchanges = JSON.parse(localStorage.getItem('connectedExchanges') || '[]');
+        const existingIndex = connectedExchanges.findIndex((ex: any) => 
+          ex.name.toLowerCase() === exchange.toLowerCase()
+        );
+        
+        const connectionInfo = { 
+          name: exchange, 
+          connected: true, 
+          api_key: api_key.trim(), 
+          timestamp: Date.now() 
+        };
+        
+        if (existingIndex >= 0) {
+          connectedExchanges[existingIndex] = connectionInfo;
+        } else {
+          connectedExchanges.push(connectionInfo);
+        }
+        
+        localStorage.setItem('connectedExchanges', JSON.stringify(connectedExchanges));
+        
+        return { 
+          success: true, 
+          message: `Successfully connected to ${exchange}`,
+          exchange: connectionInfo
+        };
+        
+      } catch (error: any) {
+        console.error('Exchange connection test failed:', error);
+        
+        // Parse error message from API response if available
+        let errorMessage = 'Failed to connect to exchange';
+        
+        if (error.response?.data) {
+          const responseData = error.response.data;
+          if (responseData.detail) {
+            errorMessage = responseData.detail;
+          } else if (responseData.error) {
+            errorMessage = responseData.error;
+          } else if (typeof responseData === 'string') {
+            errorMessage = responseData;
+          }
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        // Provide more user-friendly error messages for common issues
+        if (errorMessage.includes('API key') || errorMessage.includes('signature')) {
+          errorMessage = 'Invalid API key or secret. Please verify your credentials.';
+        } else if (errorMessage.includes('permission') || errorMessage.includes('IP')) {
+          errorMessage = 'API key permissions are insufficient. Please enable trading permissions and check IP restrictions.';
+        } else if (errorMessage.includes('network')) {
+          errorMessage = 'Network error connecting to the exchange. Please check your connection and try again.';
+        }
+        
+        throw new Error(errorMessage);
+      }
+    };
+
+    // Try the direct connection endpoint first (in case it gets implemented in the future)
+    try {
+      const response = await api.post('/api/exchanges/connect/', { 
+        exchange: exchange.toLowerCase(),
+        api_key: api_key.trim(),
+        api_secret: api_secret.trim()
+      });
+      
+      // If we get here, the endpoint worked (not expected with current backend)
+      console.log('Direct connection endpoint is available');
+      return response.data;
+      
+    } catch (error: any) {
+      // If it's a 404, fall back to our test connection method
+      if (error.response?.status === 404) {
+        console.log('Direct connection endpoint not available, using test connection method');
+        return testConnection();
+      }
+      
+      // For other errors, log them and try the test connection as a fallback
+      console.warn('Direct connection failed, falling back to test connection:', error);
+      return testConnection();
+    }
+  },subscribe: async (subscription_slug: string) => {
     const response = await api.post('/api/subscriptions/subscribe/', { subscription_slug });
     return response.data;
   },
