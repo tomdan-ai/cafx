@@ -108,10 +108,24 @@ export const Exchanges: React.FC = () => {
       setApiSecret('');
     } catch (error: any) {
       console.error('Connection failed:', error);
-      const errorMessage = error.response?.data?.detail || 
-                          error.response?.data?.error || 
-                          error.message || 
-                          'Failed to connect exchange';
+      
+      // Handle specific error cases for better user feedback
+      let errorMessage = 'Failed to connect exchange';
+      
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        errorMessage = 'Invalid API credentials. Please check your API key and secret.';
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.detail || 
+                      error.response?.data?.error || 
+                      'Invalid API credentials or configuration.';
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast.error(errorMessage);
     } finally {
       setConnecting(false);

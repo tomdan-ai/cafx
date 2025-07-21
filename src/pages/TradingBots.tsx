@@ -59,7 +59,10 @@ export const TradingBots: React.FC = () => {
           apiService.getBotRunHours()
         ]);
 
-        setBots(botsResponse.futures.concat(botsResponse.spot));
+        // Add type property to bots based on their source array
+        const futuresBots = (botsResponse.futures || []).map((bot: any) => ({ ...bot, type: 'futures' as const }));
+        const spotBots = (botsResponse.spot || []).map((bot: any) => ({ ...bot, type: 'spot' as const }));
+        setBots(futuresBots.concat(spotBots));
         
         const connected = connectedExchangesResponse.exchanges?.filter((ex: any) => ex.connected) || [];
         setExchanges(connected);
@@ -81,7 +84,7 @@ export const TradingBots: React.FC = () => {
   const filteredBots = bots.filter(bot => {
     if (activeTab === 'all') return true;
     return bot.type === activeTab;
-  });
+  }).filter(bot => bot.type); // Additional safety filter to ensure bot has type property
 
   const handleCreateBot = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -262,14 +265,14 @@ export const TradingBots: React.FC = () => {
                     <img src="/MERLIN.png" alt="Trading Bot" className="w-6 h-6 object-contain" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">{bot.name || `${bot.pair} Bot`}</h3>
-                    <p className="text-sm text-gray-400">{bot.exchange} • {bot.pair}</p>
+                    <h3 className="text-lg font-semibold text-white">{bot.name || `${bot.pair || 'Unknown'} Bot`}</h3>
+                    <p className="text-sm text-gray-400">{bot.exchange || 'Unknown'} • {bot.pair || 'Unknown'}</p>
                   </div>
                 </div>
                 <span className={`px-2 py-1 text-xs rounded-full ${
                   bot.type === 'spot' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'
                 }`}>
-                  {bot.type.toUpperCase()}
+                  {bot.type?.toUpperCase() || 'UNKNOWN'}
                 </span>
               </div>
 
@@ -278,22 +281,22 @@ export const TradingBots: React.FC = () => {
                   <span className="text-sm text-gray-400">Status</span>
                   <div className="flex items-center space-x-2">
                     {getStatusIcon(bot.status)}
-                    <span className="text-sm text-white capitalize">{bot.status}</span>
+                    <span className="text-sm text-white capitalize">{bot.status || 'unknown'}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-400">P&L</span>
                   <div className="flex items-center space-x-1">
-                    {bot.profit_loss >= 0 ? (
+                    {(bot.profit_loss ?? 0) >= 0 ? (
                       <TrendingUp className="w-4 h-4 text-green-400" />
                     ) : (
                       <TrendingDown className="w-4 h-4 text-red-400" />
                     )}
                     <span className={`text-sm font-medium ${
-                      bot.profit_loss >= 0 ? 'text-green-400' : 'text-red-400'
+                      (bot.profit_loss ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'
                     }`}>
-                      ${bot.profit_loss.toLocaleString()}
+                      ${(bot.profit_loss ?? 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
