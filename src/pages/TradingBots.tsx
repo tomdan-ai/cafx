@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { apiService } from '../utils/api';
-import { Bot, Play, Pause, Square, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Bot, Play, Pause, Square, Plus, TrendingUp, TrendingDown, Key, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface TradingBot {
@@ -19,26 +19,30 @@ interface TradingBot {
   task_id?: string;
 }
 
-interface ConnectedExchange {
-  name: string;
-  connected: boolean;
+interface SupportedExchange {
+  value: string;
+  label: string;
   image?: string;
 }
 
 export const TradingBots: React.FC = () => {
   const [bots, setBots] = useState<TradingBot[]>([]);
-  const [exchanges, setExchanges] = useState<ConnectedExchange[]>([]);
+  const [supportedExchanges, setSupportedExchanges] = useState<SupportedExchange[]>([]);
   const [pairs, setPairs] = useState<any[]>([]);
   const [runHours, setRunHours] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'spot' | 'futures'>('all');
   const [creating, setCreating] = useState(false);
+  const [showApiSecret, setShowApiSecret] = useState(false);
+  
   const [botForm, setBotForm] = useState({
     name: '',
-    mode: 'manual' as 'auto' | 'manual', // Add bot mode
+    mode: 'manual' as 'auto' | 'manual',
     type: 'spot' as 'spot' | 'futures',
     exchange: '',
+    api_key: '',
+    api_secret: '',
     symbol: '',
     grid_size: '',
     upper_price: '',
@@ -52,9 +56,9 @@ export const TradingBots: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [botsResponse, connectedExchangesResponse, pairsResponse, runHoursResponse] = await Promise.all([
+        const [botsResponse, supportedExchangesResponse, pairsResponse, runHoursResponse] = await Promise.all([
           apiService.getAllBots(),
-          apiService.getConnectedExchanges(),
+          apiService.getExchanges(), // Changed from getConnectedExchanges to getExchanges
           apiService.getPairs(),
           apiService.getBotRunHours()
         ]);
@@ -64,12 +68,11 @@ export const TradingBots: React.FC = () => {
         const spotBots = (botsResponse.spot || []).map((bot: any) => ({ ...bot, type: 'spot' as const }));
         setBots(futuresBots.concat(spotBots));
         
-        const connected = connectedExchangesResponse.exchanges?.filter((ex: any) => ex.connected) || [];
-        setExchanges(connected);
+        // Set supported exchanges instead of connected exchanges
+        setSupportedExchanges(supportedExchangesResponse || []);
 
         setPairs(Array.isArray(pairsResponse) ? pairsResponse : []);
-        // Ensure runHours is an array
-        setRunHours(Array.isArray(runHoursResponse) ? runHoursResponse : [24, 48, 72, 168]); // Default values if not an array
+        setRunHours(Array.isArray(runHoursResponse) ? runHoursResponse : [24, 48, 72, 168]);
       } catch (error) {
         console.error('Failed to fetch data:', error);
         toast.error('Failed to load data');
@@ -84,22 +87,41 @@ export const TradingBots: React.FC = () => {
   const filteredBots = bots.filter(bot => {
     if (activeTab === 'all') return true;
     return bot.type === activeTab;
-  }).filter(bot => bot.type); // Additional safety filter to ensure bot has type property
+  }).filter(bot => bot.type);
 
   const handleCreateBot = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate API credentials
+    if (!botForm.api_key.trim() || !botForm.api_secret.trim()) {
+      toast.error('Please provide both API key and secret');
+      return;
+    }
+
+    // Validate API key format
+    if (botForm.api_key.includes('@') || botForm.api_key.length < 16) {
+      toast.error('Please enter a valid exchange API key (not email/password)');
+      return;
+    }
+
+    if (botForm.api_secret.includes('@') || botForm.api_secret.length < 16) {
+      toast.error('Please enter a valid exchange API secret');
+      return;
+    }
+
     setCreating(true);
 
     try {
       let botConfig: any;
 
       if (botForm.mode === 'auto') {
-        // Auto mode - simplified config with only exchange and price
+        // Auto mode - simplified config
         botConfig = {
           mode: 'auto',
           exchange: botForm.exchange,
           investment_amount: parseFloat(botForm.investment_amount),
-          // Auto mode will use default settings from API
+          api_key: botForm.api_key.trim(),
+          api_secret: botForm.api_secret.trim(),
         };
       } else {
         // Manual mode - full config
@@ -112,6 +134,8 @@ export const TradingBots: React.FC = () => {
           investment_amount: parseFloat(botForm.investment_amount),
           run_hours: parseInt(botForm.run_hours),
           exchange: botForm.exchange,
+          api_key: botForm.api_key.trim(),
+          api_secret: botForm.api_secret.trim(),
         };
 
         if (botForm.type === 'futures') {
@@ -137,6 +161,8 @@ export const TradingBots: React.FC = () => {
         mode: 'manual',
         type: 'spot',
         exchange: '',
+        api_key: '',
+        api_secret: '',
         symbol: '',
         grid_size: '',
         upper_price: '',
@@ -193,25 +219,28 @@ export const TradingBots: React.FC = () => {
       case 'paused':
         return <Pause className="w-4 h-4 text-yellow-400" />;
       case 'inactive':
-        return <Square className="w-4 h-4 text-gray-400" />;
+        return <Square className="w-4 h-4 text-red-400" />;
       default:
-        return null;
+        return <Square className="w-4 h-4 text-gray-400" />;
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+        <div className="relative">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+          <div className="absolute inset-0 rounded-full h-12 w-12 border-t-2 border-blue-500 animate-spin animation-delay-200"></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative space-y-8">
-      {/* Animated Background Image - Only center image, corners removed */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+    <div className="space-y-8 relative min-h-screen">
+      {/* Background MERLIN logo - very subtle */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0">
+        <div className="relative">
           <img 
             src="/MERLIN.png" 
             alt="Background" 
@@ -223,7 +252,7 @@ export const TradingBots: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content - with relative positioning to stay above background */}
+      {/* Main Content */}
       <div className="relative z-10">
         <div className="flex items-center justify-between">
           <div>
@@ -333,7 +362,7 @@ export const TradingBots: React.FC = () => {
           maxWidth="lg"
         >
           <form onSubmit={handleCreateBot} className="space-y-6">
-            {/* Bot Mode Selection */}
+            {/* Bot Mode and Type Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-300">Bot Mode</label>
@@ -368,7 +397,7 @@ export const TradingBots: React.FC = () => {
               </div>
             </div>
 
-            {/* Exchange - Always visible */}
+            {/* Exchange Selection */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-300">Exchange</label>
               <select
@@ -377,24 +406,78 @@ export const TradingBots: React.FC = () => {
                 className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required
               >
-                <option value="">Select Connected Exchange</option>
-                {exchanges.map((exchange) => (
-                  <option key={exchange.name} value={exchange.name.toLowerCase()}>
-                    {exchange.name}
+                <option value="">Select Exchange</option>
+                {supportedExchanges.map((exchange) => (
+                  <option key={exchange.value} value={exchange.value}>
+                    {exchange.label}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Investment Amount - Always visible */}
+            {/* API Credentials Section */}
+            <div className="space-y-4">
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                <div className="flex items-start space-x-2">
+                  <div className="w-5 h-5 bg-yellow-500/20 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-yellow-400 text-xs font-bold">!</span>
+                  </div>
+                  <div className="text-sm text-yellow-200">
+                    <p className="font-medium mb-1">Exchange API Credentials Required</p>
+                    <p className="text-xs text-yellow-300/80">
+                      Enter your exchange API key and secret. These credentials are used only for this bot and are not stored permanently.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Input
+                label="API Key"
+                type="text"
+                value={botForm.api_key}
+                onChange={(e) => setBotForm({...botForm, api_key: e.target.value})}
+                placeholder="Enter your exchange API key"
+                icon={<Key className="w-5 h-5 text-gray-400" />}
+                required
+              />
+              {botForm.api_key && (botForm.api_key.includes('@') || botForm.api_key.length < 16) && (
+                <p className="text-red-400 text-xs mt-1">
+                  ⚠️ This doesn't look like a valid API key. Please use your exchange API credentials.
+                </p>
+              )}
+
+              <div className="relative">
+                <Input
+                  label="API Secret"
+                  type={showApiSecret ? "text" : "password"}
+                  value={botForm.api_secret}
+                  onChange={(e) => setBotForm({...botForm, api_secret: e.target.value})}
+                  placeholder="Enter your exchange API secret"
+                  icon={<Key className="w-5 h-5 text-gray-400" />}
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-9 text-gray-400 hover:text-white transition-colors"
+                  onClick={() => setShowApiSecret(!showApiSecret)}
+                >
+                  {showApiSecret ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {botForm.api_secret && (botForm.api_secret.includes('@') || botForm.api_secret.length < 16) && (
+                <p className="text-red-400 text-xs mt-1">
+                  ⚠️ This doesn't look like a valid API secret. Please use your exchange API credentials.
+                </p>
+              )}
+            </div>
+
+            {/* Bot Name */}
             <Input
-              label="Investment Amount"
-              type="number"
-              step="0.01"
-              value={botForm.investment_amount}
-              onChange={(e) => setBotForm({...botForm, investment_amount: e.target.value})}
-              placeholder="Investment amount"
-              required
+              label="Bot Name (Optional)"
+              type="text"
+              value={botForm.name}
+              onChange={(e) => setBotForm({...botForm, name: e.target.value})}
+              placeholder="Enter a name for your bot"
             />
 
             {/* Auto Mode Notice */}
@@ -415,7 +498,7 @@ export const TradingBots: React.FC = () => {
               </div>
             )}
 
-            {/* Manual Mode Fields - Only visible in manual mode */}
+            {/* Manual Mode Fields */}
             {botForm.mode === 'manual' && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -491,7 +574,7 @@ export const TradingBots: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Futures-specific fields for manual mode */}
+                {/* Futures-specific fields */}
                 {botForm.type === 'futures' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
@@ -519,6 +602,17 @@ export const TradingBots: React.FC = () => {
               </>
             )}
 
+            {/* Investment Amount - Always visible */}
+            <Input
+              label="Investment Amount"
+              type="number"
+              step="0.01"
+              value={botForm.investment_amount}
+              onChange={(e) => setBotForm({...botForm, investment_amount: e.target.value})}
+              placeholder="Investment amount"
+              required
+            />
+
             <div className="flex space-x-4">
               <Button
                 type="button"
@@ -540,15 +634,11 @@ export const TradingBots: React.FC = () => {
         </Modal>
       </div>
 
-      {/* Add custom CSS for animations */}
+      {/* CSS for animations */}
       <style jsx>{`
         @keyframes spin {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         
         .animate-spin-slow {

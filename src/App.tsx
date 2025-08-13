@@ -9,7 +9,6 @@ import EmailVerification from './components/auth/EmailVerification';
 import { ForgotPassword } from './components/auth/ForgotPassword';
 import { ResetPassword } from './components/auth/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
-import { Exchanges } from './pages/Exchanges';
 import { TradingBots } from './pages/TradingBots';
 import { Subscription } from './pages/Subscription';
 import { Analytics } from './pages/Analytics';
@@ -47,11 +46,6 @@ function App() {
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/exchanges" element={
-            <ProtectedRoute>
-              <Exchanges />
             </ProtectedRoute>
           } />
           <Route path="/bots" element={

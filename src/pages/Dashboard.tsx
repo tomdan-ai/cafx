@@ -6,7 +6,7 @@ import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { apiService } from '../utils/api';
-import { Plus, BarChart3, RefreshCw, Link2 } from 'lucide-react';
+import { Plus, BarChart3, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface DashboardStatsType {
@@ -125,10 +125,6 @@ export const Dashboard: React.FC = () => {
 
   const handleViewAnalytics = () => {
     navigate('/analytics');
-  };
-
-  const handleConnectExchange = () => {
-    navigate('/exchanges');
   };
 
   const handleRefresh = () => {
@@ -267,7 +263,7 @@ export const Dashboard: React.FC = () => {
       {/* Quick Actions */}
       <Card className="p-4 sm:p-6">
         <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Button
             variant="primary"
             size="lg"
@@ -288,17 +284,6 @@ export const Dashboard: React.FC = () => {
             <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 mb-2" />
             <span className="text-base sm:text-lg font-medium">Analytics</span>
             <span className="text-xs sm:text-sm opacity-80 mt-1">Track performance</span>
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={handleConnectExchange}
-            className="flex flex-col items-center p-4 sm:p-6 h-auto text-center sm:col-span-2 lg:col-span-1"
-          >
-            <Link2 className="w-6 h-6 sm:w-8 sm:h-8 mb-2" />
-            <span className="text-base sm:text-lg font-medium">Connect Exchange</span>
-            <span className="text-xs sm:text-sm opacity-80 mt-1">Add trading platforms</span>
           </Button>
         </div>
       </Card>

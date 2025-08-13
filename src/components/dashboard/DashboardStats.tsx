@@ -150,17 +150,6 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
       }
     },
     {
-      title: 'Connected Exchanges',
-      value: stats.connected_exchanges.toString(),
-      subtitle: 'Trading platforms',
-      icon: <LinkIcon className="w-5 h-5 sm:w-6 sm:h-6" />,
-      onClick: () => navigate('/exchanges'),
-      trend: stats.connected_exchanges > 0 ? {
-        value: 'All synced',
-        positive: true
-      } : undefined
-    },
-    {
       title: 'Subscription',
       value: stats.subscription_tier.charAt(0).toUpperCase() + stats.subscription_tier.slice(1),
       subtitle: 'Current plan',
@@ -241,9 +230,9 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">No Active Bots</h3>
             <p className="text-sm sm:text-base text-gray-400 mb-6">
-              Get started by creating your first trading bot and connecting an exchange.
+              Get started by creating your first trading bot.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex justify-center">
               <Button
                 variant="primary"
                 onClick={() => navigate('/bots')}
@@ -251,14 +240,6 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
               >
                 <img src="/MERLIN.png" alt="Create Bot" className="w-4 h-4 mr-2 object-contain" />
                 Create Your First Bot
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => navigate('/exchanges')}
-                className="flex items-center justify-center"
-              >
-                <LinkIcon className="w-4 h-4 mr-2" />
-                Connect Exchange
               </Button>
             </div>
           </div>

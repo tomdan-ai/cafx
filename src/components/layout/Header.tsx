@@ -30,7 +30,6 @@ export const Header: React.FC = () => {
 
   const navigationItems = [
     { path: '/dashboard', label: 'Dashboard', icon: Home },
-    { path: '/exchanges', label: 'Exchanges', icon: TrendingUp },
     { path: '/bots', label: 'Trading Bots', icon: () => <img src="/MERLIN.png" alt="Trading Bots" className="w-5 h-5 object-contain" /> },
     { path: '/subscription', label: 'Subscription', icon: Settings },
   ];
