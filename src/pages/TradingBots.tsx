@@ -512,8 +512,8 @@ export const TradingBots: React.FC = () => {
                     >
                       <option value="">Select Pair</option>
                       {pairs.map((pair) => (
-                        <option key={pair.symbol} value={pair.symbol}>
-                          {pair.symbol}
+                        <option key={pair.value} value={pair.value}>
+                          {pair.label}
                         </option>
                       ))}
                     </select>
