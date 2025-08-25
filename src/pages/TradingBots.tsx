@@ -5,8 +5,9 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { apiService } from '../utils/api';
-import { Bot, Play, Pause, Square, Plus, TrendingUp, TrendingDown, Key, Eye, EyeOff } from 'lucide-react';
+import { Play, Pause, Square, Plus, TrendingUp, TrendingDown, Key, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '../utils/errorUtils';
 
 interface TradingBot {
   id: string;
@@ -37,6 +38,7 @@ export const TradingBots: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'spot' | 'futures'>('all');
   const [creating, setCreating] = useState(false);
   const [showApiSecret, setShowApiSecret] = useState(false);
+  const [gridSizeError, setGridSizeError] = useState('');
   
   const [botForm, setBotForm] = useState({
     name: '',
@@ -54,6 +56,22 @@ export const TradingBots: React.FC = () => {
     leverage: '',
     strategy_type: 'long'
   });
+
+  const handleGridSizeChange = (value: string) => {
+    setBotForm({ ...botForm, grid_size: value });
+    const n = parseInt(value || '0', 10);
+    if (!value) {
+      setGridSizeError('');
+      return;
+    }
+    if (isNaN(n) || n <= 0) {
+      setGridSizeError('Please enter a valid number');
+    } else if (n > 50) {
+      setGridSizeError('Grid size must be 50 or less');
+    } else {
+      setGridSizeError('');
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,9 +93,9 @@ export const TradingBots: React.FC = () => {
 
         setPairs(Array.isArray(pairsResponse) ? pairsResponse : []);
         setRunHours(Array.isArray(runHoursResponse) ? runHoursResponse : [24, 48, 72, 168]);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to fetch data:', error);
-        toast.error('Failed to load data');
+        toast.error(getErrorMessage(error, 'Failed to load data'));
       } finally {
         setLoading(false);
       }
@@ -146,11 +164,10 @@ export const TradingBots: React.FC = () => {
         }
       }
 
-      let response;
       if (botForm.type === 'futures') {
-        response = await apiService.startFuturesBot(botConfig);
+        await apiService.startFuturesBot(botConfig);
       } else {
-        response = await apiService.startSpotBot(botConfig);
+        await apiService.startSpotBot(botConfig);
       }
 
       // Refresh bots list
@@ -188,14 +205,10 @@ export const TradingBots: React.FC = () => {
         if (window.confirm(prompt)) {
           navigate('/subscription');
         } else {
-          toast.error(detail);
+          toast.error(getErrorMessage(error, detail || 'Action not allowed'));
         }
       } else {
-        const errorMessage = error.response?.data?.message ||
-                             error.response?.data?.detail ||
-                             error.message ||
-                             'Failed to create bot';
-        toast.error(errorMessage);
+        toast.error(getErrorMessage(error, 'Failed to create bot'));
       }
     } finally {
       setCreating(false);
@@ -216,16 +229,14 @@ export const TradingBots: React.FC = () => {
       }
 
       // Refresh bots list
-      const botsResponse = await apiService.getAllBots();
-      setBots(botsResponse);
+  const botsResponse = await apiService.getAllBots();
+  const futures = botsResponse.futures || [];
+  const spot = botsResponse.spot || [];
+  setBots(futures.concat(spot));
       
       toast.success('Bot stopped successfully!');
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Failed to stop bot';
-      toast.error(errorMessage);
+      toast.error(getErrorMessage(error, 'Failed to stop bot'));
     }
   };
 
@@ -535,14 +546,20 @@ export const TradingBots: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                  <Input
-                    label="Grid Size"
-                    type="number"
-                    value={botForm.grid_size}
-                    onChange={(e) => setBotForm({...botForm, grid_size: e.target.value})}
-                    placeholder="Number of grids"
-                    required
-                  />
+                  <div>
+                    <Input
+                      label="Grid Size"
+                      type="number"
+                      value={botForm.grid_size}
+                      onChange={(e) => handleGridSizeChange(e.target.value)}
+                      placeholder="Number of grids"
+                      required
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Specify number of grid levels (max 50).</p>
+                    {gridSizeError && (
+                      <p className="text-xs text-red-400 mt-1">{gridSizeError}</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

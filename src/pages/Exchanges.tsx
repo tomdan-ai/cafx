@@ -6,6 +6,7 @@ import { Input } from '../components/ui/Input';
 import { apiService } from '../utils/api';
 import { CheckCircle, XCircle, Plus, Key, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '../utils/errorUtils';
 
 interface Exchange {
   value: string;
@@ -60,9 +61,9 @@ export const Exchanges: React.FC = () => {
       } else {
         setConnectedExchanges([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch exchanges:', error);
-      toast.error('Failed to load exchanges');
+      toast.error(getErrorMessage(error, 'Failed to load exchanges'));
     } finally {
       setLoading(false);
     }
@@ -116,25 +117,7 @@ export const Exchanges: React.FC = () => {
       setApiSecret('');
     } catch (error: any) {
       console.error('Connection failed:', error);
-      
-      // Handle specific error cases for better user feedback
-      let errorMessage = 'Failed to connect exchange';
-      
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        errorMessage = 'Invalid API credentials. Please check your API key and secret.';
-      } else if (error.response?.status === 400) {
-        errorMessage = error.response?.data?.detail || 
-                      error.response?.data?.error || 
-                      'Invalid API credentials or configuration.';
-      } else if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast.error(errorMessage);
+      toast.error(getErrorMessage(error, 'Failed to connect exchange'));
     } finally {
       setConnecting(false);
     }
