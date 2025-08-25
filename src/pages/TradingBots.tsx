@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
@@ -26,6 +27,7 @@ interface SupportedExchange {
 }
 
 export const TradingBots: React.FC = () => {
+  const navigate = useNavigate();
   const [bots, setBots] = useState<TradingBot[]>([]);
   const [supportedExchanges, setSupportedExchanges] = useState<SupportedExchange[]>([]);
   const [pairs, setPairs] = useState<any[]>([]);
@@ -175,11 +177,26 @@ export const TradingBots: React.FC = () => {
       
       toast.success('Bot created and started successfully!');
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Failed to create bot';
-      toast.error(errorMessage);
+      const status = error.response?.status;
+      const detail = (error.response?.data?.detail || error.response?.data?.message || '').toString();
+
+      // If backend denies action because of subscription, guide user to subscription page
+      if (status === 403 && detail.toLowerCase().includes('subscription')) {
+        // Show message and offer to open subscription page
+        const prompt = `${detail}\n\nOpen subscription page to upgrade/manage?`;
+        // Use a simple confirm so no UI component changes are required
+        if (window.confirm(prompt)) {
+          navigate('/subscription');
+        } else {
+          toast.error(detail);
+        }
+      } else {
+        const errorMessage = error.response?.data?.message ||
+                             error.response?.data?.detail ||
+                             error.message ||
+                             'Failed to create bot';
+        toast.error(errorMessage);
+      }
     } finally {
       setCreating(false);
     }
@@ -635,7 +652,7 @@ export const TradingBots: React.FC = () => {
       </div>
 
       {/* CSS for animations */}
-      <style jsx>{`
+  <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }

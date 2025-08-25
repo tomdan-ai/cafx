@@ -51,7 +51,15 @@ export const Exchanges: React.FC = () => {
       console.log('Connected exchanges:', connectedResponse);
 
       setSupportedExchanges(supportedResponse);
-      setConnectedExchanges(connectedResponse.exchanges || []);
+
+      // connectedResponse may be an array or an object with { exchanges }
+      if (Array.isArray(connectedResponse)) {
+        setConnectedExchanges(connectedResponse);
+      } else if (Array.isArray((connectedResponse as any)?.exchanges)) {
+        setConnectedExchanges((connectedResponse as any).exchanges);
+      } else {
+        setConnectedExchanges([]);
+      }
     } catch (error) {
       console.error('Failed to fetch exchanges:', error);
       toast.error('Failed to load exchanges');

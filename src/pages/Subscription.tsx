@@ -94,21 +94,21 @@ export const Subscription: React.FC = () => {
             toast('This is already your current plan.');
             return;
         }
-
+ 
         setLoading(true);
         try {
             await apiService.subscribe(slug);
-
+ 
             const updatedProfile = await apiService.getProfile();
             setUser(updatedProfile);
-
+ 
             // Update the plans state to reflect the new subscription
             const updatedPlans = subscriptionPlans.map((plan) => ({
                 ...plan,
                 isCurrent: plan.slug === slug,
             }));
             setPlans(updatedPlans);
-
+ 
             toast.success(`Successfully subscribed to the ${slug} plan! 🎉`);
             
             // Optional: Navigate back to dashboard after successful subscription
@@ -116,8 +116,22 @@ export const Subscription: React.FC = () => {
                 navigate('/dashboard');
             }, 2000);
         } catch (error: any) {
-            const errorMessage = error.response?.data?.detail || 'Subscription failed.';
-            toast.error(errorMessage);
+            const respData = error.response?.data || {};
+            const detail = (respData.detail || respData.error || '').toString().toLowerCase();
+ 
+            // If backend says user is already subscribed, refresh profile and inform user
+            if (error.response?.status === 400 && detail.includes('already subscribed')) {
+                try {
+                    const updatedProfile = await apiService.getProfile();
+                    setUser(updatedProfile);
+                    toast.success('You are already subscribed. Profile refreshed.');
+                } catch {
+                    toast.error('You are already subscribed (could not refresh profile).');
+                }
+            } else {
+                const errorMessage = error.response?.data?.detail || 'Subscription failed.';
+                toast.error(errorMessage);
+            }
         } finally {
             setLoading(false);
         }

@@ -44,8 +44,22 @@ export const Dashboard: React.FC = () => {
 
       // Ensure botsResponse is an array
       const allBots = Array.isArray(botsResponse) ? botsResponse : [];
-      const connectedExchangesData = connectedExchangesResponse || { count: 0, exchanges: [] };
-      const connectedCount = connectedExchangesData.count || connectedExchangesData.exchanges.filter((ex: any) => ex.connected).length;
+      // Normalize connected exchanges response. The API may return an object with
+      // { count, exchanges } or it might return an array directly or an object
+      // missing the `exchanges` property. Be defensive to avoid runtime errors.
+      const connectedExchangesData = connectedExchangesResponse || {};
+
+      // Support these possible shapes:
+      // - Array: [{...}, ...]
+      // - Object: { count: number, exchanges: [...] }
+      let exchangesArray: any[] = [];
+      if (Array.isArray(connectedExchangesResponse)) {
+        exchangesArray = connectedExchangesResponse as any[];
+      } else if (Array.isArray((connectedExchangesData as any).exchanges)) {
+        exchangesArray = (connectedExchangesData as any).exchanges;
+      }
+
+      const connectedCount = (connectedExchangesData as any).count ?? exchangesArray.filter((ex: any) => ex?.connected).length;
 
       // Calculate totals
       const activeBotsData = allBots.filter((bot: any) => bot.is_running);

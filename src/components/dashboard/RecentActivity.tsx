@@ -26,7 +26,7 @@ export const RecentActivity: React.FC = () => {
           apiService.getConnectedExchanges()
         ]);
 
-        const combinedActivity: ActivityItem[] = [];
+  const combinedActivity: ActivityItem[] = [];
 
         // Process bot data
         const futuresBots = botsResponse.futures || [];
@@ -43,8 +43,8 @@ export const RecentActivity: React.FC = () => {
           });
         });
 
-        // Generate realistic profit/loss activities based on bot performance
-        if (allBots.length > 0) {
+  // Generate realistic profit/loss activities based on bot performance
+  if (allBots.length > 0) {
           const now = new Date();
           const activeBots = allBots.filter((bot: any) => bot.is_running);
           
@@ -74,6 +74,14 @@ export const RecentActivity: React.FC = () => {
             }
           });
         }
+
+        // If exchangesResponse includes connected exchanges, we could add exchange
+        // connected activities here in the future. Normalize shape to avoid errors.
+        const exchangesArray: any[] = Array.isArray(exchangesResponse)
+          ? exchangesResponse
+          : Array.isArray((exchangesResponse as any)?.exchanges)
+            ? (exchangesResponse as any).exchanges
+            : [];
 
         // Sort activities by date, most recent first
         combinedActivity.sort((a, b) => b.date.getTime() - a.date.getTime());
