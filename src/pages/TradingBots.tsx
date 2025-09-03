@@ -129,6 +129,12 @@ export const TradingBots: React.FC = () => {
       return;
     }
 
+    // Validate symbol selection
+    if (!botForm.symbol.trim()) {
+      toast.error('Please select a trading pair');
+      return;
+    }
+
     setCreating(true);
 
     try {
@@ -138,6 +144,7 @@ export const TradingBots: React.FC = () => {
         // Auto mode - simplified config
         botConfig = {
           mode: 'auto',
+          symbol: botForm.symbol,
           exchange: botForm.exchange,
           investment_amount: parseFloat(botForm.investment_amount),
           api_key: botForm.api_key.trim(),
@@ -523,6 +530,29 @@ export const TradingBots: React.FC = () => {
                     </p>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Auto Mode Trading Pair Selection */}
+            {botForm.mode === 'auto' && (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-300">Trading Pair</label>
+                <select
+                  value={botForm.symbol}
+                  onChange={(e) => setBotForm({...botForm, symbol: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  required
+                >
+                  <option value="">Select Pair</option>
+                  {pairs.map((pair) => (
+                    <option key={pair.value} value={pair.value}>
+                      {pair.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400">
+                  Choose the trading pair for AI optimization
+                </p>
               </div>
             )}
 
