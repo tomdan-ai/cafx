@@ -135,18 +135,37 @@ export const TradingBots: React.FC = () => {
       return;
     }
 
+    // Validate grid size for both modes
+    if (!botForm.grid_size.trim()) {
+      toast.error('Please specify grid size');
+      return;
+    }
+
+    const gridSize = parseInt(botForm.grid_size);
+    if (isNaN(gridSize) || gridSize <= 0) {
+      toast.error('Please enter a valid grid size');
+      return;
+    }
+
+    if (gridSize > 50) {
+      toast.error('Grid size must be 50 or less');
+      return;
+    }
+
     setCreating(true);
 
     try {
       let botConfig: any;
 
       if (botForm.mode === 'auto') {
-        // Auto mode - simplified config
+        // Auto mode - AI handles most parameters but user controls grid size and trading pair
         botConfig = {
           mode: 'auto',
           symbol: botForm.symbol,
+          grid_size: gridSize, // User-controlled grid size
           exchange: botForm.exchange,
           investment_amount: parseFloat(botForm.investment_amount),
+          run_hours: 24, // Default for auto mode
           api_key: botForm.api_key.trim(),
           api_secret: botForm.api_secret.trim(),
         };
@@ -155,7 +174,7 @@ export const TradingBots: React.FC = () => {
         botConfig = {
           mode: 'manual',
           symbol: botForm.symbol,
-          grid_size: parseInt(botForm.grid_size),
+          grid_size: gridSize,
           upper_price: parseFloat(botForm.upper_price),
           lower_price: parseFloat(botForm.lower_price),
           investment_amount: parseFloat(botForm.investment_amount),
@@ -204,16 +223,21 @@ export const TradingBots: React.FC = () => {
       const status = error.response?.status;
       const detail = (error.response?.data?.detail || error.response?.data?.message || '').toString();
 
-      // If backend denies action because of subscription, guide user to subscription page
+      // Enhanced error handling with better user guidance
       if (status === 403 && detail.toLowerCase().includes('subscription')) {
-        // Show message and offer to open subscription page
         const prompt = `${detail}\n\nOpen subscription page to upgrade/manage?`;
-        // Use a simple confirm so no UI component changes are required
         if (window.confirm(prompt)) {
           navigate('/subscription');
         } else {
           toast.error(getErrorMessage(error, detail || 'Action not allowed'));
         }
+      } else if (status === 400) {
+        // Handle validation errors better
+        toast.error(getErrorMessage(error, 'Please check your input values'));
+      } else if (status === 401) {
+        toast.error('Invalid API credentials. Please check your exchange API key and secret.');
+      } else if (status >= 500) {
+        toast.error('Server error. Please try again in a moment.');
       } else {
         toast.error(getErrorMessage(error, 'Failed to create bot'));
       }
@@ -525,34 +549,53 @@ export const TradingBots: React.FC = () => {
                   <div>
                     <h4 className="text-sm font-medium text-blue-400 mb-1">AI Auto Mode Enabled</h4>
                     <p className="text-xs text-gray-300">
-                      MERLIN AI will automatically select optimal trading pairs, grid settings, 
-                      price ranges, and execution parameters based on current market conditions.
+                      MERLIN AI will automatically optimize price ranges and execution parameters. 
+                      You control the trading pair and grid size based on your risk preference.
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Auto Mode Trading Pair Selection */}
+            {/* Auto Mode Controls */}
             {botForm.mode === 'auto' && (
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-300">Trading Pair</label>
-                <select
-                  value={botForm.symbol}
-                  onChange={(e) => setBotForm({...botForm, symbol: e.target.value})}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                >
-                  <option value="">Select Pair</option>
-                  {pairs.map((pair) => (
-                    <option key={pair.value} value={pair.value}>
-                      {pair.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-400">
-                  Choose the trading pair for AI optimization
-                </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-300">Trading Pair</label>
+                  <select
+                    value={botForm.symbol}
+                    onChange={(e) => setBotForm({...botForm, symbol: e.target.value})}
+                    className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    required
+                  >
+                    <option value="">Select Pair</option>
+                    {pairs.map((pair) => (
+                      <option key={pair.value} value={pair.value}>
+                        {pair.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400">
+                    Choose the trading pair for AI optimization
+                  </p>
+                </div>
+
+                <div>
+                  <Input
+                    label="Grid Size"
+                    type="number"
+                    value={botForm.grid_size}
+                    onChange={(e) => handleGridSizeChange(e.target.value)}
+                    placeholder="Number of grids"
+                    required
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Controls risk and leverage. Higher grid = lower leverage, safer trading (max 50)
+                  </p>
+                  {gridSizeError && (
+                    <p className="text-xs text-red-400 mt-1">{gridSizeError}</p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -689,6 +732,7 @@ export const TradingBots: React.FC = () => {
               <Button
                 type="submit"
                 loading={creating}
+                disabled={!!gridSizeError}
                 className="flex-1"
               >
                 {creating ? 'Creating...' : `Create ${botForm.mode === 'auto' ? 'AI' : 'Manual'} Bot`}

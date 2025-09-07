@@ -9,6 +9,7 @@ import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { Mail, Lock, Shield, TrendingUp, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '../../utils/errorUtils';
 
 const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -26,6 +27,7 @@ interface ResetPasswordFormData {
 
 export const ResetPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
   const navigate = useNavigate();
 
   const { register, handleSubmit, formState: { errors } } = useForm<ResetPasswordFormData>({
@@ -37,14 +39,11 @@ export const ResetPassword: React.FC = () => {
     try {
       setLoading(true);
       await apiService.setNewPassword(data.email, data.otp_code, data.new_password, data.confirm_password);
-      toast.success('Password reset successfully!');
-      navigate('/auth/login');
+      setResetSuccess(true);
+      toast.success('Password reset successful! You can now login with your new password.');
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Failed to reset password';
-      toast.error(errorMessage);
+      // Enhanced error handling with user-friendly messages
+      toast.error(getErrorMessage(error, 'Password reset failed. Please check your details and try again.'));
     } finally {
       setLoading(false);
     }

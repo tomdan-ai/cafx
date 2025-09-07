@@ -8,6 +8,8 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { Mail, Lock, User, TrendingUp } from 'lucide-react';
+import { getErrorMessage } from '../../utils/errorUtils';
+import toast from 'react-hot-toast';
 
 const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -37,13 +39,14 @@ export const SignupForm: React.FC = () => {
     try {
       setLoading(true);
       console.log('Submitting signup form...');
-      await signup(data.email, data.username, data.password, data.confirmPassword);
+      await signup(data.email, data.username, data.password);
       console.log('Signup successful, navigating to verification...');
       // Navigate to verification page after successful signup
       navigate('/auth/verify');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup failed:', error);
-      // Error is handled in the store
+      // Enhanced error handling with user-friendly messages
+      toast.error(getErrorMessage(error, 'Account creation failed. Please try again.'));
     } finally {
       setLoading(false);
     }

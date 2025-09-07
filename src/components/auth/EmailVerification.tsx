@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Mail, Shield, TrendingUp, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getErrorMessage } from '../../utils/errorUtils';
 
 const EmailVerification: React.FC = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -102,12 +103,8 @@ const EmailVerification: React.FC = () => {
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
       
-      // Set specific error message
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Invalid verification code. Please try again.';
-      setError(errorMessage);
+      // Enhanced error handling with user-friendly messages
+      setError(getErrorMessage(error, 'Invalid verification code. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -121,11 +118,8 @@ const EmailVerification: React.FC = () => {
       setError('');
       await resendOtp(user.email);
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Failed to resend code. Please try again.';
-      setError(errorMessage);
+      // Enhanced error handling with user-friendly messages
+      setError(getErrorMessage(error, 'Failed to resend code. Please try again.'));
     } finally {
       setResending(false);
     }

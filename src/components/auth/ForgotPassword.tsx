@@ -9,6 +9,7 @@ import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { Mail, ArrowLeft, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '../../utils/errorUtils';
 
 const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -34,11 +35,8 @@ export const ForgotPassword: React.FC = () => {
       setEmailSent(true);
       toast.success('Password reset code sent to your email!');
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Failed to send reset code';
-      toast.error(errorMessage);
+      // Enhanced error handling with user-friendly messages
+      toast.error(getErrorMessage(error, 'Failed to send reset code. Please check your email and try again.'));
     } finally {
       setLoading(false);
     }

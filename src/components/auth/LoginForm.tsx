@@ -8,6 +8,8 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { Mail, Lock } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { getErrorMessage } from '../../utils/errorUtils';
 
 const schema = yup.object().shape({
   email: yup.string().email('Invalid email').required('Email is required'),
@@ -34,8 +36,9 @@ export const LoginForm: React.FC = () => {
       setLoading(true);
       await login(data.email, data.password);
       navigate('/dashboard');
-    } catch (error) {
-      // Error is handled in the store
+    } catch (error: any) {
+      // Enhanced error handling with user-friendly messages
+      toast.error(getErrorMessage(error, 'Login failed. Please check your credentials.'));
     } finally {
       setLoading(false);
     }
