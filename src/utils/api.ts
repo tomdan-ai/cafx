@@ -138,8 +138,9 @@ export const apiService = {
     if (active !== undefined) params.active = active.toString();
     if (exchange) params.exchange = exchange;
     
+    // Make sure this is using the real API call, not mock data
     const response = await api.get('/api/futures/bots/', { params });
-    return Array.isArray(response.data) ? response.data : [];
+    return response.data;
   },
 
   startFuturesBot: async (botConfig: {
@@ -182,22 +183,13 @@ export const apiService = {
   },
 
   getSpotBots: async (active?: boolean, exchange?: string) => {
-    // Note: The API doesn't have a dedicated spot bots endpoint in the docs
-    // We'll use the main bots endpoint with spot=true filter
-    const response = await api.get('/api/bots/', { params: { spot: 'true' } });
-    let spotBots = response.data.spot || [];
+    const params: Record<string, any> = {};
+    if (active !== undefined) params.active = active.toString();
+    if (exchange) params.exchange = exchange;
     
-    // Apply additional filtering if needed
-    if (active !== undefined) {
-      spotBots = spotBots.filter((bot: any) => bot.is_running === active);
-    }
-    if (exchange) {
-      spotBots = spotBots.filter((bot: any) => 
-        bot.exchange?.toLowerCase() === exchange.toLowerCase()
-      );
-    }
-    
-    return spotBots;
+    // Make sure this is using the real API call, not mock data
+    const response = await api.get('/api/spot/bots/', { params });
+    return response.data;
   },
 
   startSpotBot: async (botConfig: {

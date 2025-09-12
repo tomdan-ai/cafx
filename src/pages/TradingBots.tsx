@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { apiService } from '../utils/api';
+import { useAuthStore } from '../store/authStore';
 import { Play, Pause, Square, Plus, TrendingUp, TrendingDown, Key, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/errorUtils';
@@ -73,24 +74,41 @@ export const TradingBots: React.FC = () => {
     }
   };
 
+  const normalizeBot = (bot: any, type: 'spot' | 'futures') => ({
+    id: bot.id ?? bot.pk ?? bot._id ?? String(bot.task_id || bot.taskId || Math.random()),
+    name: bot.name || bot.pair || `${type.toUpperCase()} Bot`,
+    type,
+    exchange: bot.exchange || bot.exchange_name || bot.exchange_id || 'Unknown',
+    pair: bot.pair || bot.symbol || bot.pair_symbol || '',
+    status: bot.is_running || bot.status === 'running' || bot.status === 'active' ? 'active' : 'inactive',
+    profit_loss: bot.profit_loss ?? bot.profit ?? 0,
+    created_at: bot.date_created || bot.created_at || bot.created || new Date().toISOString(),
+    task_id: bot.task_id || bot.taskId || bot.task || undefined,
+    __raw: bot
+  });
+
+  const authUser = useAuthStore(state => state.user);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [botsResponse, supportedExchangesResponse, pairsResponse, runHoursResponse] = await Promise.all([
-          apiService.getAllBots(),
-          apiService.getExchanges(), // Changed from getConnectedExchanges to getExchanges
+        // Fetch only the authenticated user's bots using the spot/futures endpoints
+        const [spotBotsResponse, futuresBotsResponse, supportedExchangesResponse, pairsResponse, runHoursResponse] = await Promise.all([
+          apiService.getSpotBots(),
+          apiService.getFuturesBots(),
+          apiService.getExchanges(),
           apiService.getPairs(),
           apiService.getBotRunHours()
         ]);
 
-        // Add type property to bots based on their source array
-        const futuresBots = (botsResponse.futures || []).map((bot: any) => ({ ...bot, type: 'futures' as const }));
-        const spotBots = (botsResponse.spot || []).map((bot: any) => ({ ...bot, type: 'spot' as const }));
-        setBots(futuresBots.concat(spotBots));
+        const futuresBots = Array.isArray(futuresBotsResponse) ? futuresBotsResponse.map((b: any) => normalizeBot(b, 'futures')) : [];
+        const spotBots = Array.isArray(spotBotsResponse) ? spotBotsResponse.map((b: any) => normalizeBot(b, 'spot')) : [];
         
-        // Set supported exchanges instead of connected exchanges
+        // API endpoints now properly scope to user, so we can directly combine the bots
+        const combined = [...futuresBots, ...spotBots];
+        setBots(combined as unknown as TradingBot[]);
+        
         setSupportedExchanges(supportedExchangesResponse || []);
-
         setPairs(Array.isArray(pairsResponse) ? pairsResponse : []);
         setRunHours(Array.isArray(runHoursResponse) ? runHoursResponse : [24, 48, 72, 168]);
       } catch (error: any) {
@@ -102,7 +120,7 @@ export const TradingBots: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [authUser]);
 
   const filteredBots = bots.filter(bot => {
     if (activeTab === 'all') return true;
@@ -196,9 +214,16 @@ export const TradingBots: React.FC = () => {
         await apiService.startSpotBot(botConfig);
       }
 
-      // Refresh bots list
-      const botsResponse = await apiService.getAllBots();
-      setBots(botsResponse.futures.concat(botsResponse.spot));
+      // Refresh bots list (user scoped)
+      const [refreshedSpot, refreshedFutures] = await Promise.all([
+        apiService.getSpotBots(),
+        apiService.getFuturesBots(),
+      ]);
+      const refreshed = [
+        ...(Array.isArray(refreshedFutures) ? refreshedFutures.map((b: any) => normalizeBot(b, 'futures')) : []),
+        ...(Array.isArray(refreshedSpot) ? refreshedSpot.map((b: any) => normalizeBot(b, 'spot')) : [])
+      ];
+      setBots(refreshed as unknown as TradingBot[]);
 
       setShowModal(false);
       setBotForm({
@@ -259,11 +284,16 @@ export const TradingBots: React.FC = () => {
         await apiService.stopSpotBot(bot.task_id);
       }
 
-      // Refresh bots list
-  const botsResponse = await apiService.getAllBots();
-  const futures = botsResponse.futures || [];
-  const spot = botsResponse.spot || [];
-  setBots(futures.concat(spot));
+      // Refresh bots list (user scoped)
+      const [refreshedSpot2, refreshedFutures2] = await Promise.all([
+        apiService.getSpotBots(),
+        apiService.getFuturesBots(),
+      ]);
+      const refreshed2 = [
+        ...(Array.isArray(refreshedFutures2) ? refreshedFutures2.map((b: any) => normalizeBot(b, 'futures')) : []),
+        ...(Array.isArray(refreshedSpot2) ? refreshedSpot2.map((b: any) => normalizeBot(b, 'spot')) : [])
+      ];
+      setBots(refreshed2 as unknown as TradingBot[]);
       
       toast.success('Bot stopped successfully!');
     } catch (error: any) {
