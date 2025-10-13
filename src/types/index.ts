@@ -74,3 +74,27 @@ export interface BotConfig {
   leverage?: number;
   strategy_type?: string;
 }
+
+export interface SubscriptionPlan {
+  slug: 'starter' | 'pro' | 'advanced';
+  name: string;
+  label: string;
+  price: string;
+  features: string[];
+  buttonText: string;
+  isHighlighted: boolean;
+  isCurrent: boolean;
+}
+
+export interface SubscriptionResponse {
+  message: string;
+  subscription_plan: string;
+}
+
+export interface SubscriptionStatus {
+  active: boolean;
+  plan: string;
+  pending_payment: boolean;
+  days_remaining?: number;
+  invoice_sent?: boolean;
+}
