@@ -4,13 +4,14 @@ import { Button } from '../components/ui/Button';
 import { apiService } from '../utils/api';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
-import { Check, X } from 'lucide-react';
+import { Check, X, Mail, Clock, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { SubscriptionPlan, SubscriptionStatus } from '../types';
 
-const subscriptionPlans = [
+const subscriptionPlans: SubscriptionPlan[] = [
     {
-        slug: 'starter', // Changed from 'basic' to match API
-        name: 'Basic Plan',
+        slug: 'starter',
+        name: 'Starter Plan',
         label: 'built for beginners',
         price: '14 Days Free',
         features: [
@@ -77,83 +78,145 @@ export const Subscription: React.FC = () => {
     const navigate = useNavigate();
     const user = useAuthStore((state) => state.user);
     const setUser = useAuthStore((state) => state.setUser);
-    const [plans, setPlans] = useState(subscriptionPlans);
+    const [plans, setPlans] = useState<SubscriptionPlan[]>(subscriptionPlans);
     const [loading, setLoading] = useState(false);
+    const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<string>('');
 
-    // Fix: Remove 'plans' from dependency array to prevent infinite loop
     useEffect(() => {
         const updatedPlans = subscriptionPlans.map((plan) => ({
             ...plan,
             isCurrent: plan.slug === user?.subscription_tier,
         }));
         setPlans(updatedPlans);
-    }, [user]); // Only depend on 'user' changes
+        
+        // Fetch subscription status to check for pending invoices
+        fetchSubscriptionStatus();
+    }, [user]);
+
+    const fetchSubscriptionStatus = async () => {
+        try {
+            const status = await apiService.getSubscriptionStatus();
+            setSubscriptionStatus(status);
+        } catch (error) {
+            // Status endpoint might not exist yet, that's okay
+            console.log('Subscription status not available');
+        }
+    };
 
     const handleSubscribe = async (slug: string) => {
         if (user?.subscription_tier === slug) {
             toast('This is already your current plan.');
             return;
         }
- 
+
         setLoading(true);
+        setSelectedPlan(slug);
+        
         try {
-            await apiService.subscribe(slug);
- 
-            const updatedProfile = await apiService.getProfile();
-            setUser(updatedProfile);
- 
-            // Update the plans state to reflect the new subscription
-            const updatedPlans = subscriptionPlans.map((plan) => ({
-                ...plan,
-                isCurrent: plan.slug === slug,
-            }));
-            setPlans(updatedPlans);
- 
-            toast.success(`Successfully subscribed to the ${slug} plan! 🎉`);
+            // Send subscription request to backend
+            const response = await apiService.subscribe(slug);
             
-            // Optional: Navigate back to dashboard after successful subscription
+            // Show success state
+            setShowSuccess(true);
+            toast.success('Invoice generated successfully! Please check your email for payment instructions.');
+            
+            // Update UI to show email instructions
             setTimeout(() => {
-                navigate('/dashboard');
-            }, 2000);
+                setShowSuccess(false);
+            }, 10000); // Hide success message after 10 seconds
+            
         } catch (error: any) {
-            const respData = error.response?.data || {};
-            const detail = (respData.detail || respData.error || '').toString().toLowerCase();
- 
-            // If backend says user is already subscribed, refresh profile and inform user
-            if (error.response?.status === 400 && detail.includes('already subscribed')) {
+            const status = error.response?.status;
+            const data = error.response?.data;
+            const detail = data?.detail || data?.error || '';
+
+            // Handle different error scenarios as per documentation
+            if (status === 400) {
+                toast.error(detail || 'Invalid subscription plan');
+            } else if (status === 401) {
+                toast.error('Authentication required. Please log in again.');
+                navigate('/auth/login');
+            } else if (status === 409) {
+                toast.error('You already have an active subscription');
+                // Refresh user profile
                 try {
                     const updatedProfile = await apiService.getProfile();
                     setUser(updatedProfile);
-                    toast.success('You are already subscribed. Profile refreshed.');
                 } catch {
-                    toast.error('You are already subscribed (could not refresh profile).');
+                    // Ignore profile refresh error
                 }
+            } else if (status >= 500) {
+                toast.error('Server error. Please try again in a moment.');
             } else {
-                const errorMessage = error.response?.data?.detail || 'Subscription failed.';
-                toast.error(errorMessage);
+                toast.error(detail || 'Unable to process subscription request');
             }
         } finally {
             setLoading(false);
+            setSelectedPlan('');
         }
     };
 
-    // Add this to the subscription page if needed
-    const handleCancelSubscription = async () => {
-        setLoading(true);
+    const handleResendInvoice = async () => {
         try {
-            await apiService.cancelSubscription();
-            
-            const updatedProfile = await apiService.getProfile();
-            setUser(updatedProfile);
-            
-            toast.success('Subscription cancelled successfully!');
-        } catch (error: any) {
-            const errorMessage = error.response?.data?.detail || 'Cancellation failed.';
-            toast.error(errorMessage);
-        } finally {
-            setLoading(false);
+            await apiService.resendInvoice();
+            toast.success('Invoice resent to your email!');
+        } catch (error) {
+            toast.error('Failed to resend invoice. Please try again.');
         }
     };
+
+    const PendingPaymentNotice = () => (
+        subscriptionStatus?.pending_payment && (
+            <div className="mb-8 p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                <div className="flex items-start space-x-3">
+                    <Clock className="w-5 h-5 text-yellow-400 mt-0.5" />
+                    <div className="flex-1">
+                        <h3 className="text-yellow-400 font-semibold mb-1">Pending Payment</h3>
+                        <p className="text-gray-300 text-sm mb-3">
+                            You have a pending invoice for your subscription renewal. 
+                            {subscriptionStatus.days_remaining && 
+                                ` You have ${subscriptionStatus.days_remaining} days remaining to complete payment.`
+                            }
+                        </p>
+                        <button
+                            onClick={handleResendInvoice}
+                            className="inline-flex items-center space-x-2 text-yellow-400 hover:text-yellow-300 text-sm font-medium"
+                        >
+                            <Mail className="w-4 h-4" />
+                            <span>Resend Invoice Email</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    );
+
+    const SuccessMessage = () => (
+        showSuccess && (
+            <div className="mb-8 p-6 bg-green-900/20 border border-green-500/30 rounded-lg">
+                <div className="flex items-start space-x-3">
+                    <Check className="w-6 h-6 text-green-400 mt-0.5" />
+                    <div className="flex-1">
+                        <h3 className="text-green-400 font-semibold text-lg mb-2">Invoice Generated Successfully!</h3>
+                        <div className="text-gray-300 space-y-2">
+                            <p>• A payment invoice has been sent to your registered email address</p>
+                            <p>• Click the payment link in the email to complete your subscription</p>
+                            <p>• Your subscription will be activated automatically after payment confirmation</p>
+                            <p>• No need to return to this page - activation is automatic!</p>
+                        </div>
+                        <div className="mt-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded">
+                            <p className="text-blue-300 text-sm flex items-center">
+                                <Mail className="w-4 h-4 mr-2" />
+                                Please check your email inbox (and spam folder) for the payment link
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    );
 
     return (
         <div className="min-h-screen bg-black py-12 px-4">
@@ -172,9 +235,15 @@ export const Subscription: React.FC = () => {
                 <div className="text-center space-y-4 mb-16">
                     <h1 className="text-4xl font-bold text-white">Choose Your Plan</h1>
                     <p className="text-lg text-gray-400">
-                        Unlock more features and power up your trading with a subscription.
+                        Select a plan and receive a secure payment invoice via email.
                     </p>
                 </div>
+
+                {/* Pending Payment Notice */}
+                <PendingPaymentNotice />
+
+                {/* Success Message */}
+                <SuccessMessage />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
                     {plans.map((plan, index) => (
@@ -187,28 +256,45 @@ export const Subscription: React.FC = () => {
                             <div
                                 className={`rounded-2xl p-8 h-full flex flex-col ${
                                     plan.isHighlighted
-                                        ? 'bg-gradient-to-b from-purple-600 to-purple-700 text-white shadow-2xl shadow-purple-500/50'
-                                        : 'bg-black border border-gray-800 text-white'
-                                }`}
+                                        ? 'bg-gradient-to-br from-purple-600/20 to-blue-600/20 border-2 border-purple-500'
+                                        : 'bg-gray-900/50 border border-gray-700'
+                                } backdrop-blur-sm hover:bg-gray-800/60 transition-all duration-300`}
                             >
-                                {/* Header */}
+                                {/* Popular badge */}
+                                {plan.isHighlighted && (
+                                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                                        <span className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                                            Most Popular
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Plan header */}
                                 <div className="text-center mb-8">
-                                    <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                                    <p className={`text-sm font-medium mb-4 ${
-                                        plan.isHighlighted ? 'text-purple-200' : 'text-purple-400'
+                                    <h3 className={`text-2xl font-bold mb-2 ${
+                                        plan.isHighlighted ? 'text-white' : 'text-gray-100'
+                                    }`}>
+                                        {plan.name}
+                                    </h3>
+                                    <p className={`text-sm ${
+                                        plan.isHighlighted ? 'text-purple-200' : 'text-gray-400'
                                     }`}>
                                         {plan.label}
                                     </p>
-                                    <div className="mb-6">
-                                        <div className="text-3xl font-bold">{plan.price}</div>
+                                    <div className="mt-4">
+                                        <span className={`text-3xl font-bold ${
+                                            plan.isHighlighted ? 'text-white' : 'text-gray-100'
+                                        }`}>
+                                            {plan.price}
+                                        </span>
                                     </div>
                                 </div>
 
-                                {/* Features */}
-                                <div className="flex-grow space-y-4 mb-8">
+                                {/* Features list */}
+                                <div className="flex-1">
                                     {plan.features.map((feature, featureIndex) => (
-                                        <div key={featureIndex} className="flex items-start space-x-3">
-                                            <Check className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                                        <div key={featureIndex} className="flex items-center space-x-3 mb-3">
+                                            <Check className={`w-5 h-5 flex-shrink-0 ${
                                                 plan.isHighlighted ? 'text-white' : 'text-purple-400'
                                             }`} />
                                             <span className={`text-sm ${
@@ -228,13 +314,17 @@ export const Subscription: React.FC = () => {
                                             disabled={loading || plan.isCurrent}
                                             className="w-full py-3 px-6 bg-white text-purple-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            {loading && !plan.isCurrent ? (
-                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-purple-600 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                            ) : null}
-                                            {plan.isCurrent ? 'Current Plan' : plan.buttonText}
+                                            {loading && selectedPlan === plan.slug ? (
+                                                <div className="flex items-center justify-center">
+                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    Generating Invoice...
+                                                </div>
+                                            ) : (
+                                                plan.isCurrent ? 'Current Plan' : plan.buttonText
+                                            )}
                                         </button>
                                     ) : (
                                         <button
@@ -242,13 +332,17 @@ export const Subscription: React.FC = () => {
                                             disabled={loading || plan.isCurrent}
                                             className="w-full py-3 px-6 bg-black border-2 border-purple-500 text-purple-500 rounded-lg font-semibold hover:bg-purple-500 hover:text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            {loading && !plan.isCurrent ? (
-                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-purple-500 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                            ) : null}
-                                            {plan.isCurrent ? 'Current Plan' : plan.buttonText}
+                                            {loading && selectedPlan === plan.slug ? (
+                                                <div className="flex items-center justify-center">
+                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    Generating Invoice...
+                                                </div>
+                                            ) : (
+                                                plan.isCurrent ? 'Current Plan' : plan.buttonText
+                                            )}
                                         </button>
                                     )}
                                 </div>
@@ -258,7 +352,11 @@ export const Subscription: React.FC = () => {
                 </div>
 
                 <div className="text-center text-gray-500 mt-12 text-sm">
-                    Note: This is a simulation. A real implementation would integrate a payment provider.
+                    <div className="flex items-center justify-center space-x-2 mb-2">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>Secure payment processing via BlockRadar invoicing system</span>
+                    </div>
+                    <p>Subscription activates automatically upon payment confirmation</p>
                 </div>
             </div>
         </div>
