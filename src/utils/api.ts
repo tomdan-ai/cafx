@@ -477,12 +477,25 @@ export const apiService = {
     return response.data;
   },
 
+  // Add new method for getting subscription status if needed
+  getSubscriptionStatus: async () => {
+    const response = await api.get('/api/subscriptions/status/');
+    return response.data;
+  },
+
+  // Add method to resend invoice if needed
+  resendInvoice: async () => {
+    const response = await api.post('/api/subscriptions/resend-invoice/');
+    return response.data;
+  },
+
   cancelSubscription: async () => {
     const response = await api.post('/api/subscriptions/cancel/');
     return response.data;
   }
 };
 
+// Mock API functions for fallback/development
 // Mock API functions for fallback/development
 export const mockApi = {
   login: async (email: string, password: string) => {
