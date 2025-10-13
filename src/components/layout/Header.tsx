@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../ui/Button';
 import { TrendingUp, User, LogOut, Settings, Zap, Menu, X, ChevronLeft, Home } from 'lucide-react';
+import { SubscriptionStatus } from '../ui/SubscriptionStatus';
 
 export const Header: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuthStore();
