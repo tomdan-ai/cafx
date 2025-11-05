@@ -203,7 +203,9 @@ export const TradingBots: React.FC = () => {
         };
 
         if (botForm.type === 'futures') {
-          botConfig.leverage = parseInt(botForm.leverage);
+          if (botForm.leverage) {
+            botConfig.leverage = parseInt(botForm.leverage);
+          }
           botConfig.strategy_type = botForm.strategy_type;
         }
       }
