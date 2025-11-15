@@ -1,9 +1,9 @@
 import axios from 'axios';
-import toast from 'react-hot-toast';
+// import toast from 'react-hot-toast';
 
 // Real API configuration
 export const api = axios.create({
-  baseURL: 'https://tradecafx.onrender.com',
+  baseURL: 'https://cafx-backend.onrender.com',
   timeout: 10000,
   headers: {
     'accept': 'application/json',
@@ -498,7 +498,7 @@ export const apiService = {
 // Mock API functions for fallback/development
 // Mock API functions for fallback/development
 export const mockApi = {
-  login: async (email: string, password: string) => {
+  login: async (email: string) => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     return {
       data: {
@@ -515,7 +515,7 @@ export const mockApi = {
     };
   },
 
-  signup: async (email: string, username: string, password: string, confirm_password: string) => {
+  signup: async (email: string, username: string) => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     return {
       data: {
