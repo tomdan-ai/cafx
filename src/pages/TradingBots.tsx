@@ -203,8 +203,13 @@ export const TradingBots: React.FC = () => {
         };
 
         if (botForm.type === 'futures') {
-          if (botForm.leverage) {
-            botConfig.leverage = parseInt(botForm.leverage);
+          // Only include leverage if it's provided and valid
+          // If not provided, backend will decide automatically
+          if (botForm.leverage && botForm.leverage.trim() !== '') {
+            const leverageValue = parseInt(botForm.leverage);
+            if (!isNaN(leverageValue) && leverageValue >= 1) {
+              botConfig.leverage = leverageValue;
+            }
           }
           botConfig.strategy_type = botForm.strategy_type;
         }
@@ -716,14 +721,19 @@ export const TradingBots: React.FC = () => {
                 {/* Futures-specific fields */}
                 {botForm.type === 'futures' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Leverage"
-                      type="number"
-                      value={botForm.leverage}
-                      onChange={(e) => setBotForm({...botForm, leverage: e.target.value})}
-                      placeholder="Leverage (e.g., 5)"
-                      required
-                    />
+                    <div>
+                      <Input
+                        label="Leverage (Optional)"
+                        type="number"
+                        min="1"
+                        value={botForm.leverage}
+                        onChange={(e) => setBotForm({...botForm, leverage: e.target.value})}
+                        placeholder="Leave empty for auto"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">
+                        Leave empty to let AI decide, or enter a value ≥ 1
+                      </p>
+                    </div>
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-gray-300">Strategy Type</label>
                       <select
