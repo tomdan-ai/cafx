@@ -40,7 +40,7 @@ export const TradingBots: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [showApiSecret, setShowApiSecret] = useState(false);
   const [gridSizeError, setGridSizeError] = useState('');
-  
+
   const [botForm, setBotForm] = useState({
     name: '',
     mode: 'manual' as 'auto' | 'manual',
@@ -103,11 +103,11 @@ export const TradingBots: React.FC = () => {
 
         const futuresBots = Array.isArray(futuresBotsResponse) ? futuresBotsResponse.map((b: any) => normalizeBot(b, 'futures')) : [];
         const spotBots = Array.isArray(spotBotsResponse) ? spotBotsResponse.map((b: any) => normalizeBot(b, 'spot')) : [];
-        
+
         // API endpoints now properly scope to user, so we can directly combine the bots
         const combined = [...futuresBots, ...spotBots];
         setBots(combined as unknown as TradingBot[]);
-        
+
         setSupportedExchanges(supportedExchangesResponse || []);
         setPairs(Array.isArray(pairsResponse) ? pairsResponse : []);
         setRunHours(Array.isArray(runHoursResponse) ? runHoursResponse : [24, 48, 72, 168]);
@@ -129,7 +129,7 @@ export const TradingBots: React.FC = () => {
 
   const handleCreateBot = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate API credentials
     if (!botForm.api_key.trim() || !botForm.api_secret.trim()) {
       toast.error('Please provide both API key and secret');
@@ -187,6 +187,17 @@ export const TradingBots: React.FC = () => {
           api_key: botForm.api_key.trim(),
           api_secret: botForm.api_secret.trim(),
         };
+
+        if (botForm.type === 'futures') {
+          // Only include leverage if it's provided and valid
+          if (botForm.leverage && botForm.leverage.trim() !== '') {
+            const leverageValue = parseInt(botForm.leverage);
+            if (!isNaN(leverageValue) && leverageValue >= 1) {
+              botConfig.leverage = leverageValue;
+            }
+          }
+          botConfig.strategy_type = botForm.strategy_type;
+        }
       } else {
         // Manual mode - full config
         botConfig = {
@@ -249,7 +260,7 @@ export const TradingBots: React.FC = () => {
         leverage: '',
         strategy_type: 'long'
       });
-      
+
       toast.success('Bot created and started successfully!');
     } catch (error: any) {
       const status = error.response?.status;
@@ -301,7 +312,7 @@ export const TradingBots: React.FC = () => {
         ...(Array.isArray(refreshedSpot2) ? refreshedSpot2.map((b: any) => normalizeBot(b, 'spot')) : [])
       ];
       setBots(refreshed2 as unknown as TradingBot[]);
-      
+
       toast.success('Bot stopped successfully!');
     } catch (error: any) {
       toast.error(getErrorMessage(error, 'Failed to stop bot'));
@@ -337,9 +348,9 @@ export const TradingBots: React.FC = () => {
       {/* Background MERLIN logo - very subtle */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0">
         <div className="relative">
-          <img 
-            src="/MERLIN.png" 
-            alt="Background" 
+          <img
+            src="/MERLIN.png"
+            alt="Background"
             className="w-96 h-96 opacity-5 animate-spin-slow object-contain"
             style={{
               animation: 'spin 20s linear infinite, bounce 3s ease-in-out infinite'
@@ -369,11 +380,10 @@ export const TradingBots: React.FC = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === tab
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === tab
                   ? 'bg-purple-500 text-white'
                   : 'text-gray-400 hover:text-white'
-              }`}
+                }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
@@ -394,9 +404,8 @@ export const TradingBots: React.FC = () => {
                     <p className="text-sm text-gray-400">{bot.exchange || 'Unknown'} • {bot.pair || 'Unknown'}</p>
                   </div>
                 </div>
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  bot.type === 'spot' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'
-                }`}>
+                <span className={`px-2 py-1 text-xs rounded-full ${bot.type === 'spot' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'
+                  }`}>
                   {bot.type?.toUpperCase() || 'UNKNOWN'}
                 </span>
               </div>
@@ -418,9 +427,8 @@ export const TradingBots: React.FC = () => {
                     ) : (
                       <TrendingDown className="w-4 h-4 text-red-400" />
                     )}
-                    <span className={`text-sm font-medium ${
-                      (bot.profit_loss ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'
-                    }`}>
+                    <span className={`text-sm font-medium ${(bot.profit_loss ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}>
                       ${(bot.profit_loss ?? 0).toLocaleString()}
                     </span>
                   </div>
@@ -435,9 +443,9 @@ export const TradingBots: React.FC = () => {
                     View Details
                   </Button>
                   {bot.status === 'active' && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="text-red-400 hover:text-red-300"
                       onClick={() => handleStopBot(bot)}
                     >
@@ -464,7 +472,7 @@ export const TradingBots: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-300">Bot Mode</label>
                 <select
                   value={botForm.mode}
-                  onChange={(e) => setBotForm({...botForm, mode: e.target.value as 'auto' | 'manual'})}
+                  onChange={(e) => setBotForm({ ...botForm, mode: e.target.value as 'auto' | 'manual' })}
                   className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 >
@@ -472,8 +480,8 @@ export const TradingBots: React.FC = () => {
                   <option value="auto">Auto Mode</option>
                 </select>
                 <p className="text-xs text-gray-400">
-                  {botForm.mode === 'auto' 
-                    ? 'AI will handle all trading parameters automatically' 
+                  {botForm.mode === 'auto'
+                    ? 'AI will handle all trading parameters automatically'
                     : 'Configure all trading parameters manually'
                   }
                 </p>
@@ -483,7 +491,7 @@ export const TradingBots: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-300">Bot Type</label>
                 <select
                   value={botForm.type}
-                  onChange={(e) => setBotForm({...botForm, type: e.target.value as 'spot' | 'futures'})}
+                  onChange={(e) => setBotForm({ ...botForm, type: e.target.value as 'spot' | 'futures' })}
                   className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 >
@@ -498,7 +506,7 @@ export const TradingBots: React.FC = () => {
               <label className="block text-sm font-medium text-gray-300">Exchange</label>
               <select
                 value={botForm.exchange}
-                onChange={(e) => setBotForm({...botForm, exchange: e.target.value})}
+                onChange={(e) => setBotForm({ ...botForm, exchange: e.target.value })}
                 className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required
               >
@@ -531,7 +539,7 @@ export const TradingBots: React.FC = () => {
                 label="API Key"
                 type="text"
                 value={botForm.api_key}
-                onChange={(e) => setBotForm({...botForm, api_key: e.target.value})}
+                onChange={(e) => setBotForm({ ...botForm, api_key: e.target.value })}
                 placeholder="Enter your exchange API key"
                 icon={<Key className="w-5 h-5 text-gray-400" />}
                 required
@@ -547,7 +555,7 @@ export const TradingBots: React.FC = () => {
                   label="API Secret"
                   type={showApiSecret ? "text" : "password"}
                   value={botForm.api_secret}
-                  onChange={(e) => setBotForm({...botForm, api_secret: e.target.value})}
+                  onChange={(e) => setBotForm({ ...botForm, api_secret: e.target.value })}
                   placeholder="Enter your exchange API secret"
                   icon={<Key className="w-5 h-5 text-gray-400" />}
                   required
@@ -572,7 +580,7 @@ export const TradingBots: React.FC = () => {
               label="Bot Name (Optional)"
               type="text"
               value={botForm.name}
-              onChange={(e) => setBotForm({...botForm, name: e.target.value})}
+              onChange={(e) => setBotForm({ ...botForm, name: e.target.value })}
               placeholder="Enter a name for your bot"
             />
 
@@ -586,7 +594,7 @@ export const TradingBots: React.FC = () => {
                   <div>
                     <h4 className="text-sm font-medium text-blue-400 mb-1">AI Auto Mode Enabled</h4>
                     <p className="text-xs text-gray-300">
-                      MERLIN AI will automatically optimize price ranges and execution parameters. 
+                      MERLIN AI will automatically optimize price ranges and execution parameters.
                       You control the trading pair and grid size based on your risk preference.
                     </p>
                   </div>
@@ -596,44 +604,77 @@ export const TradingBots: React.FC = () => {
 
             {/* Auto Mode Controls */}
             {botForm.mode === 'auto' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-300">Trading Pair</label>
-                  <select
-                    value={botForm.symbol}
-                    onChange={(e) => setBotForm({...botForm, symbol: e.target.value})}
-                    className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    required
-                  >
-                    <option value="">Select Pair</option>
-                    {pairs.map((pair) => (
-                      <option key={pair.value} value={pair.value}>
-                        {pair.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-400">
-                    Choose the trading pair for AI optimization
-                  </p>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-300">Trading Pair</label>
+                    <select
+                      value={botForm.symbol}
+                      onChange={(e) => setBotForm({ ...botForm, symbol: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      required
+                    >
+                      <option value="">Select Pair</option>
+                      {pairs.map((pair) => (
+                        <option key={pair.value} value={pair.value}>
+                          {pair.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-400">
+                      Choose the trading pair for AI optimization
+                    </p>
+                  </div>
+
+                  <div>
+                    <Input
+                      label="Grid Size"
+                      type="number"
+                      value={botForm.grid_size}
+                      onChange={(e) => handleGridSizeChange(e.target.value)}
+                      placeholder="Number of grids"
+                      required
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Controls risk and leverage. Higher grid = lower leverage, safer trading (max 50)
+                    </p>
+                    {gridSizeError && (
+                      <p className="text-xs text-red-400 mt-1">{gridSizeError}</p>
+                    )}
+                  </div>
                 </div>
 
-                <div>
-                  <Input
-                    label="Grid Size"
-                    type="number"
-                    value={botForm.grid_size}
-                    onChange={(e) => handleGridSizeChange(e.target.value)}
-                    placeholder="Number of grids"
-                    required
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Controls risk and leverage. Higher grid = lower leverage, safer trading (max 50)
-                  </p>
-                  {gridSizeError && (
-                    <p className="text-xs text-red-400 mt-1">{gridSizeError}</p>
-                  )}
-                </div>
-              </div>
+                {/* Futures-specific fields for Auto Mode */}
+                {botForm.type === 'futures' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <Input
+                        label="Leverage (Optional)"
+                        type="number"
+                        min="1"
+                        value={botForm.leverage}
+                        onChange={(e) => setBotForm({ ...botForm, leverage: e.target.value })}
+                        placeholder="Leave empty for auto"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">
+                        Leave empty to let AI decide, or enter a value ≥ 1
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-300">Strategy Type</label>
+                      <select
+                        value={botForm.strategy_type}
+                        onChange={(e) => setBotForm({ ...botForm, strategy_type: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        required
+                      >
+                        <option value="long">Long</option>
+                        <option value="short">Short</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Manual Mode Fields */}
@@ -644,7 +685,7 @@ export const TradingBots: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-300">Trading Pair</label>
                     <select
                       value={botForm.symbol}
-                      onChange={(e) => setBotForm({...botForm, symbol: e.target.value})}
+                      onChange={(e) => setBotForm({ ...botForm, symbol: e.target.value })}
                       className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       required
                     >
@@ -678,7 +719,7 @@ export const TradingBots: React.FC = () => {
                     type="number"
                     step="0.01"
                     value={botForm.lower_price}
-                    onChange={(e) => setBotForm({...botForm, lower_price: e.target.value})}
+                    onChange={(e) => setBotForm({ ...botForm, lower_price: e.target.value })}
                     placeholder="Minimum price"
                     required
                   />
@@ -687,7 +728,7 @@ export const TradingBots: React.FC = () => {
                     type="number"
                     step="0.01"
                     value={botForm.upper_price}
-                    onChange={(e) => setBotForm({...botForm, upper_price: e.target.value})}
+                    onChange={(e) => setBotForm({ ...botForm, upper_price: e.target.value })}
                     placeholder="Maximum price"
                     required
                   />
@@ -697,7 +738,7 @@ export const TradingBots: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-300">Run Hours</label>
                   <select
                     value={botForm.run_hours}
-                    onChange={(e) => setBotForm({...botForm, run_hours: e.target.value})}
+                    onChange={(e) => setBotForm({ ...botForm, run_hours: e.target.value })}
                     className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     required
                   >
@@ -727,7 +768,7 @@ export const TradingBots: React.FC = () => {
                         type="number"
                         min="1"
                         value={botForm.leverage}
-                        onChange={(e) => setBotForm({...botForm, leverage: e.target.value})}
+                        onChange={(e) => setBotForm({ ...botForm, leverage: e.target.value })}
                         placeholder="Leave empty for auto"
                       />
                       <p className="text-xs text-gray-400 mt-1">
@@ -738,7 +779,7 @@ export const TradingBots: React.FC = () => {
                       <label className="block text-sm font-medium text-gray-300">Strategy Type</label>
                       <select
                         value={botForm.strategy_type}
-                        onChange={(e) => setBotForm({...botForm, strategy_type: e.target.value})}
+                        onChange={(e) => setBotForm({ ...botForm, strategy_type: e.target.value })}
                         className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                         required
                       >
@@ -757,7 +798,7 @@ export const TradingBots: React.FC = () => {
               type="number"
               step="0.01"
               value={botForm.investment_amount}
-              onChange={(e) => setBotForm({...botForm, investment_amount: e.target.value})}
+              onChange={(e) => setBotForm({ ...botForm, investment_amount: e.target.value })}
               placeholder="Investment amount"
               required
             />
@@ -785,7 +826,7 @@ export const TradingBots: React.FC = () => {
       </div>
 
       {/* CSS for animations */}
-  <style>{`
+      <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
