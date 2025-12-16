@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Real API configuration
 export const api = axios.create({
-  baseURL: 'https://tradecafx.io',
+  baseURL: 'https://tradecafx.cafx.io/',
   timeout: 10000,
   headers: {
     'accept': 'application/json',
