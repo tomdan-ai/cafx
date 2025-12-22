@@ -10,6 +10,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   needsVerification: false,
 
+  setUser: (user: User | null) => set({ user }),
+
   login: async (email: string, password: string) => {
     try {
       const response = await apiService.login(email, password);
@@ -40,10 +42,55 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         toast.success('Login successful!');
       }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Login failed';
+      console.error('Login error:', error);
+
+      // Check for specific "Email not verified" error from backend
+      const errorData = error.response?.data;
+      const errorDetail = errorData?.detail || errorData?.message || '';
+      const nonFieldErrors = errorData?.non_field_errors || [];
+
+      const isUnverified =
+        (typeof errorDetail === 'string' && errorDetail.includes('Email not verified')) ||
+        (Array.isArray(nonFieldErrors) && nonFieldErrors.some((e: string) => e.includes('Email not verified')));
+
+      if (isUnverified) {
+        console.log('User is unverified, setting state for verification flow');
+
+        // Create a temporary user object with the email so the verification page works
+        const tempUser = {
+          id: 'temp-id',
+          username: email.split('@')[0],
+          email: email,
+          subscription_tier: 'starter' as const,
+          created_at: new Date().toISOString(),
+          is_verified: false
+        };
+
+        localStorage.setItem('user', JSON.stringify(tempUser));
+
+        set({
+          user: tempUser,
+          needsVerification: true,
+          isAuthenticated: false
+        });
+
+        // Re-throw with a specific property so the UI knows to redirect
+        const verificationError: any = new Error('Email not verified');
+        verificationError.isUnverified = true;
+        throw verificationError;
+      }
+
+      if (error.response) {
+        console.error('Login error response:', {
+          status: error.response.status,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+      }
+      const errorMessage = error.response?.data?.message ||
+        error.response?.data?.detail ||
+        error.message ||
+        'Login failed';
       toast.error(errorMessage);
       throw error;
     }
@@ -54,7 +101,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.log('Starting signup process...');
       const response = await apiService.signup(email, username, password, confirmPassword);
       console.log('Signup response:', response);
-      
+
       // Create user data for verification flow
       const userData = {
         id: response.user?.id || response.id || 'temp-id',
@@ -69,24 +116,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Store user data for verification
       localStorage.setItem('user', JSON.stringify(userData));
-      
+
       // Set state for verification flow
-      set({ 
-        user: userData, 
+      set({
+        user: userData,
         needsVerification: true,
         isAuthenticated: false,
         token: null,
         refreshToken: null
       });
-      
+
       console.log('State updated, needsVerification:', true);
       toast.success('Account created! Please check your email for verification code.');
     } catch (error: any) {
       console.error('Signup error:', error);
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Signup failed';
+      console.error('Signup error response body:', error.response?.data, 'status:', error.response?.status);
+      const errorMessage = error.response?.data?.message ||
+        error.response?.data?.detail ||
+        error.message ||
+        'Signup failed';
       toast.error(errorMessage);
       throw error;
     }
@@ -97,7 +145,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.log('Starting email verification...');
       const response = await apiService.verifyEmail(email, otp_code);
       console.log('Verification response:', response);
-      
+
       // After successful verification, the API should return tokens
       const accessToken = response.access || response.token;
       const refreshToken = response.refresh;
@@ -109,19 +157,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (refreshToken) {
           localStorage.setItem('refreshToken', refreshToken);
         }
-        
+
         const verifiedUser = {
           ...get().user!,
           ...user,
           is_verified: true
         };
-        
+
         localStorage.setItem('user', JSON.stringify(verifiedUser));
-        
-        set({ 
+
+        set({
           token: accessToken,
           refreshToken,
-          user: verifiedUser, 
+          user: verifiedUser,
           needsVerification: false,
           isAuthenticated: true
         });
@@ -131,24 +179,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           ...get().user!,
           is_verified: true
         };
-        
+
         localStorage.setItem('user', JSON.stringify(verifiedUser));
-        
-        set({ 
-          user: verifiedUser, 
+
+        set({
+          user: verifiedUser,
           needsVerification: false,
           isAuthenticated: true
         });
       }
-      
+
       console.log('Verification successful, redirecting to dashboard');
       toast.success('Email verified successfully!');
     } catch (error: any) {
       console.error('Verification error:', error);
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Verification failed. Please check your code and try again.';
+      const errorMessage = error.response?.data?.message ||
+        error.response?.data?.detail ||
+        error.message ||
+        'Verification failed. Please check your code and try again.';
       toast.error(errorMessage);
       throw error;
     }
@@ -159,10 +207,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await apiService.resendOtp(email);
       toast.success('Verification code sent to your email!');
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.detail || 
-                          error.message || 
-                          'Failed to resend verification code';
+      const errorMessage = error.response?.data?.message ||
+        error.response?.data?.detail ||
+        error.message ||
+        'Failed to resend verification code';
       toast.error(errorMessage);
       throw error;
     }
@@ -172,10 +220,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-    set({ 
-      token: null, 
+    set({
+      token: null,
       refreshToken: null,
-      user: null, 
+      user: null,
       isAuthenticated: false,
       needsVerification: false
     });
@@ -207,7 +255,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const refreshResponse = await apiService.refreshToken(refreshToken);
             const newToken = refreshResponse.access;
             localStorage.setItem('token', newToken);
-            
+
             // Retry getting profile with new token
             const profileResponse = await apiService.getProfile();
             const user = profileResponse.user || profileResponse;
@@ -253,8 +301,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         console.log('Found stored user without token:', user);
         if (user.is_verified === false) {
           console.log('User needs verification');
-          set({ 
-            user, 
+          set({
+            user,
             needsVerification: true,
             isAuthenticated: false,
             token: null,

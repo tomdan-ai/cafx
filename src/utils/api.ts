@@ -65,11 +65,11 @@ export const apiService = {
   },
 
   setNewPassword: async (email: string, otp_code: string, new_password: string, confirm_password: string) => {
-    const response = await api.post('/api/users/set-new-password/', { 
-      email, 
-      otp_code, 
-      new_password, 
-      confirm_password 
+    const response = await api.post('/api/users/set-new-password/', {
+      email,
+      otp_code,
+      new_password,
+      confirm_password
     });
     return response.data;
   },
@@ -91,10 +91,10 @@ export const apiService = {
   },
 
   changePassword: async (old_password: string, new_password: string, confirm_password: string) => {
-    const response = await api.patch('/api/users/change-password/', { 
-      old_password, 
-      new_password, 
-      confirm_password 
+    const response = await api.patch('/api/users/change-password/', {
+      old_password,
+      new_password,
+      confirm_password
     });
     return response.data;
   },
@@ -106,11 +106,11 @@ export const apiService = {
 
   // Bot Management
   getAllBots: async (spot?: boolean) => {
-    const response = await api.get('/api/bots/', { 
-      params: spot ? { spot: 'true' } : undefined 
+    const response = await api.get('/api/bots/', {
+      params: spot ? { spot: 'true' } : undefined
     });
     // Add type property to each bot based on which array it came from
-    const futuresBots = (response.data.futures || []).map((bot: any) => ({ 
+    const futuresBots = (response.data.futures || []).map((bot: any) => ({
       ...bot,
       type: 'futures',
       // Map fields to match expected frontend format
@@ -119,7 +119,7 @@ export const apiService = {
       created_at: bot.date_created,
       updated_at: bot.date_updated
     }));
-    
+
     const spotBots = (response.data.spot || []).map((bot: any) => ({
       ...bot,
       type: 'spot',
@@ -129,7 +129,7 @@ export const apiService = {
       created_at: bot.date_created,
       updated_at: bot.date_updated
     }));
-    
+
     return { futures: futuresBots, spot: spotBots };
   },
 
@@ -137,21 +137,22 @@ export const apiService = {
     const params: Record<string, any> = {};
     if (active !== undefined) params.active = active.toString();
     if (exchange) params.exchange = exchange;
-    
+
     // Make sure this is using the real API call, not mock data
     const response = await api.get('/api/futures/bots/', { params });
     return response.data;
   },
 
   startFuturesBot: async (botConfig: {
+    mode?: 'auto' | 'manual';
     symbol: string;
     grid_size: number;
-    upper_price: number;
-    lower_price: number;
+    upper_price?: number;
+    lower_price?: number;
     investment_amount: number;
-    leverage: number;
-    strategy_type: string;
-    run_hours: number;
+    leverage?: number;
+    strategy_type?: string;
+    run_hours?: number;
     exchange: string;
     api_key?: string;
     api_secret?: string;
@@ -161,19 +162,26 @@ export const apiService = {
       api_key: api_key || localStorage.getItem('exchange_api_key') || '',
       api_secret: api_secret || localStorage.getItem('exchange_api_secret') || ''
     };
-    
-    const response = await api.post('/api/futures/start-bot', {
-      ...config,
+
+    // Build request payload - only include fields that have values
+    const payload: Record<string, any> = {
       ...credentials,
-      // Ensure required fields are in correct format
-      upper_price: Number(config.upper_price),
-      lower_price: Number(config.lower_price),
-      investment_amount: Number(config.investment_amount),
-      leverage: Number(config.leverage),
+      symbol: config.symbol,
       grid_size: Number(config.grid_size),
-      run_hours: Number(config.run_hours)
-    });
-    
+      investment_amount: Number(config.investment_amount),
+      exchange: config.exchange,
+    };
+
+    // Add optional fields only if they have values (for auto mode support)
+    if (config.mode) payload.mode = config.mode;
+    if (config.upper_price !== undefined) payload.upper_price = Number(config.upper_price);
+    if (config.lower_price !== undefined) payload.lower_price = Number(config.lower_price);
+    if (config.leverage !== undefined) payload.leverage = Number(config.leverage);
+    if (config.strategy_type) payload.strategy_type = config.strategy_type;
+    if (config.run_hours !== undefined) payload.run_hours = Number(config.run_hours);
+
+    const response = await api.post('/api/futures/start-bot', payload);
+
     return response.data;
   },
 
@@ -186,19 +194,20 @@ export const apiService = {
     const params: Record<string, any> = {};
     if (active !== undefined) params.active = active.toString();
     if (exchange) params.exchange = exchange;
-    
+
     // Make sure this is using the real API call, not mock data
     const response = await api.get('/api/spot/bots/', { params });
     return response.data;
   },
 
   startSpotBot: async (botConfig: {
+    mode?: 'auto' | 'manual';
     symbol: string;
     grid_size: number;
-    upper_price: number;
-    lower_price: number;
+    upper_price?: number;
+    lower_price?: number;
     investment_amount: number;
-    run_hours: number;
+    run_hours?: number;
     exchange: string;
     api_key?: string;
     api_secret?: string;
@@ -208,29 +217,31 @@ export const apiService = {
       api_key: api_key || localStorage.getItem('exchange_api_key') || '',
       api_secret: api_secret || localStorage.getItem('exchange_api_secret') || ''
     };
-    
-    // Note: The API doesn't have a dedicated spot start endpoint in the docs
-    // Using futures endpoint as a fallback, but this should be updated when the endpoint is available
-    const response = await api.post('/api/futures/start-bot', {
-      ...config,
+
+    // Build request payload - only include fields that have values
+    const payload: Record<string, any> = {
       ...credentials,
-      // Set default leverage to 1 for spot
-      leverage: 1,
-      // Ensure required fields are in correct format
-      upper_price: Number(config.upper_price),
-      lower_price: Number(config.lower_price),
-      investment_amount: Number(config.investment_amount),
+      symbol: config.symbol,
       grid_size: Number(config.grid_size),
-      run_hours: Number(config.run_hours)
-    });
-    
+      investment_amount: Number(config.investment_amount),
+      exchange: config.exchange,
+    };
+
+    // Add optional fields only if they have values (for auto mode support)
+    if (config.mode) payload.mode = config.mode;
+    if (config.upper_price !== undefined) payload.upper_price = Number(config.upper_price);
+    if (config.lower_price !== undefined) payload.lower_price = Number(config.lower_price);
+    if (config.run_hours !== undefined) payload.run_hours = Number(config.run_hours);
+
+    // Use correct spot endpoint
+    const response = await api.post('/api/spot/start-spot', payload);
+
     return response.data;
   },
 
   stopSpotBot: async (task_id: string) => {
-    // Note: The API doesn't have a dedicated spot stop endpoint in the docs
-    // Using futures endpoint as a fallback, but this should be updated when the endpoint is available
-    const response = await api.post('/api/futures/stop-bot/', { task_id });
+    // Use correct spot stop endpoint
+    const response = await api.post('/api/spot/stop-spot/', { task_id });
     return response.data;
   },
 
@@ -238,7 +249,7 @@ export const apiService = {
   getExchanges: async () => {
     try {
       const response = await api.get('/api/get-exchanges/');
-      
+
       // Ensure the response matches the expected format
       if (Array.isArray(response.data)) {
         return response.data.map((exchange: any) => ({
@@ -247,7 +258,7 @@ export const apiService = {
           image: exchange.image || `https://cryptologos.cc/logos/${(exchange.value || exchange.name || '').toLowerCase()}-logo.png`
         }));
       }
-      
+
       // Fallback to default exchanges if response format is unexpected
       console.warn('Unexpected API response format for exchanges');
       return [
@@ -269,7 +280,7 @@ export const apiService = {
   getConnectedExchanges: async () => {
     try {
       const response = await api.get('/api/get-connected-exchanges/');
-      
+
       // Handle the expected response format
       if (response.data && 'exchanges' in response.data && 'count' in response.data) {
         return response.data.exchanges.map((exchange: any) => ({
@@ -278,11 +289,11 @@ export const apiService = {
           image: exchange.image || `https://cryptologos.cc/logos/${(exchange.name || '').toLowerCase()}-logo.png`
         }));
       }
-      
+
       // Fallback if the response doesn't match the expected format
       console.warn('Unexpected API response format for connected exchanges');
       return [];
-      
+
     } catch (error) {
       console.error('Error fetching connected exchanges:', error);
       // Return empty array if API fails
@@ -293,7 +304,7 @@ export const apiService = {
   getPairs: async () => {
     try {
       const response = await api.get('/api/get-pairs/');
-      
+
       // Ensure the response matches the expected format
       if (Array.isArray(response.data)) {
         return response.data.map((pair: any) => ({
@@ -301,7 +312,7 @@ export const apiService = {
           label: pair.label || pair.symbol || ''
         }));
       }
-      
+
       // Fallback to default pairs if response format is unexpected
       console.warn('Unexpected API response format for trading pairs');
       return [
@@ -309,7 +320,7 @@ export const apiService = {
         { value: 'ETHUSDT', label: 'ETH/USDT' },
         { value: 'BNBUSDT', label: 'BNB/USDT' },
       ];
-      
+
     } catch (error) {
       console.error('Error fetching trading pairs:', error);
       // Return default pairs if API fails
@@ -324,16 +335,16 @@ export const apiService = {
   getBotRunHours: async () => {
     try {
       const response = await api.get('/api/get-bot-run-hours/');
-      
+
       // Ensure the response matches the expected format
       if (response.data && Array.isArray(response.data.hours)) {
         return response.data.hours;
       }
-      
+
       // Fallback to default hours if response format is unexpected
       console.warn('Unexpected API response format for bot run hours');
       return [24, 48, 72];
-      
+
     } catch (error) {
       console.error('Error fetching bot run hours:', error);
       // Return default hours if API fails
@@ -346,12 +357,12 @@ export const apiService = {
     if (!api_key || !api_secret || api_key.trim().length === 0 || api_secret.trim().length === 0) {
       throw new Error('API key and secret are required');
     }
-    
+
     // Basic format validation for API keys (should not look like email/password)
     if (api_key.includes('@') || api_key.includes(' ') || api_secret.includes('@') || api_secret.includes(' ')) {
       throw new Error('Invalid API key format. Please provide valid exchange API credentials, not email/password.');
     }
-    
+
     // API keys should typically be longer than typical passwords
     if (api_key.length < 16 || api_secret.length < 16) {
       throw new Error('API key and secret appear to be too short. Please verify you are using exchange API credentials.');
@@ -374,14 +385,14 @@ export const apiService = {
           api_key: api_key.trim(),
           api_secret: api_secret.trim()
         };
-        
+
         // Test the credentials by starting a bot
         const botResult = await apiService.startFuturesBot(testConfig);
-        
+
         if (!botResult?.task_id) {
           throw new Error('Failed to start test bot - invalid response from server');
         }
-        
+
         // Try to stop the test bot immediately
         try {
           await apiService.stopFuturesBot(botResult.task_id);
@@ -389,40 +400,40 @@ export const apiService = {
           console.warn('Warning: Could not stop test bot:', stopError);
           // Continue even if we can't stop the bot - the main goal was to validate credentials
         }
-        
+
         // Store the connection info in local storage
         const connectedExchanges = JSON.parse(localStorage.getItem('connectedExchanges') || '[]');
-        const existingIndex = connectedExchanges.findIndex((ex: any) => 
+        const existingIndex = connectedExchanges.findIndex((ex: any) =>
           ex.name.toLowerCase() === exchange.toLowerCase()
         );
-        
-        const connectionInfo = { 
-          name: exchange, 
-          connected: true, 
-          api_key: api_key.trim(), 
-          timestamp: Date.now() 
+
+        const connectionInfo = {
+          name: exchange,
+          connected: true,
+          api_key: api_key.trim(),
+          timestamp: Date.now()
         };
-        
+
         if (existingIndex >= 0) {
           connectedExchanges[existingIndex] = connectionInfo;
         } else {
           connectedExchanges.push(connectionInfo);
         }
-        
+
         localStorage.setItem('connectedExchanges', JSON.stringify(connectedExchanges));
-        
-        return { 
-          success: true, 
+
+        return {
+          success: true,
           message: `Successfully connected to ${exchange}`,
           exchange: connectionInfo
         };
-        
+
       } catch (error: any) {
         console.error('Exchange connection test failed:', error);
-        
+
         // Parse error message from API response if available
         let errorMessage = 'Failed to connect to exchange';
-        
+
         if (error.response?.data) {
           const responseData = error.response.data;
           if (responseData.detail) {
@@ -435,7 +446,7 @@ export const apiService = {
         } else if (error.message) {
           errorMessage = error.message;
         }
-        
+
         // Provide more user-friendly error messages for common issues
         if (errorMessage.includes('API key') || errorMessage.includes('signature')) {
           errorMessage = 'Invalid API key or secret. Please verify your credentials.';
@@ -444,35 +455,35 @@ export const apiService = {
         } else if (errorMessage.includes('network')) {
           errorMessage = 'Network error connecting to the exchange. Please check your connection and try again.';
         }
-        
+
         throw new Error(errorMessage);
       }
     };
 
     // Try the direct connection endpoint first (in case it gets implemented in the future)
     try {
-      const response = await api.post('/api/exchanges/connect/', { 
+      const response = await api.post('/api/exchanges/connect/', {
         exchange: exchange.toLowerCase(),
         api_key: api_key.trim(),
         api_secret: api_secret.trim()
       });
-      
+
       // If we get here, the endpoint worked (not expected with current backend)
       console.log('Direct connection endpoint is available');
       return response.data;
-      
+
     } catch (error: any) {
       // If it's a 404, fall back to our test connection method
       if (error.response?.status === 404) {
         console.log('Direct connection endpoint not available, using test connection method');
         return testConnection();
       }
-      
+
       // For other errors, log them and try the test connection as a fallback
       console.warn('Direct connection failed, falling back to test connection:', error);
       return testConnection();
     }
-  },subscribe: async (subscription_slug: string) => {
+  }, subscribe: async (subscription_slug: string) => {
     const response = await api.post('/api/subscriptions/subscribe/', { subscription_slug });
     return response.data;
   },

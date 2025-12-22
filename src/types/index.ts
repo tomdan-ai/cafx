@@ -41,7 +41,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   needsVerification: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, username: string, password: string) => Promise<void>;
+  signup: (email: string, username: string, password: string, confirmPassword: string) => Promise<void>;
   verifyEmail: (email: string, otp_code: string) => Promise<void>;
   resendOtp: (email: string) => Promise<void>;
   logout: () => void;

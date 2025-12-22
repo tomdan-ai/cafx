@@ -37,6 +37,13 @@ export const LoginForm: React.FC = () => {
       await login(data.email, data.password);
       navigate('/dashboard');
     } catch (error: any) {
+      // Check if the error indicates unverified email
+      if (error.isUnverified) {
+        toast.error('Please verify your email address.');
+        navigate('/auth/verify');
+        return;
+      }
+
       // Enhanced error handling with user-friendly messages
       toast.error(getErrorMessage(error, 'Login failed. Please check your credentials.'));
     } finally {
@@ -49,7 +56,7 @@ export const LoginForm: React.FC = () => {
       {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
         <div className={`absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.05"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] animate-pulse`}></div>
-        
+
         {/* Floating Elements */}
         <div className="absolute top-20 left-20 w-32 h-32 bg-purple-500/10 rounded-full blur-xl animate-float"></div>
         <div className="absolute top-40 right-32 w-24 h-24 bg-blue-500/10 rounded-full blur-xl animate-float-delayed"></div>

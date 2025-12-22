@@ -39,6 +39,7 @@ export const SignupForm: React.FC = () => {
     try {
       setLoading(true);
       console.log('Submitting signup form...');
+      // confirmPassword is validated client-side; send only required fields to backend
       await signup(data.email, data.username, data.password);
       console.log('Signup successful, navigating to verification...');
       // Navigate to verification page after successful signup

@@ -177,13 +177,13 @@ export const TradingBots: React.FC = () => {
 
       if (botForm.mode === 'auto') {
         // Auto mode - AI handles most parameters but user controls grid size and trading pair
+        // No duration specified - bot runs continuously until manually stopped
         botConfig = {
           mode: 'auto',
           symbol: botForm.symbol,
           grid_size: gridSize, // User-controlled grid size
           exchange: botForm.exchange,
           investment_amount: parseFloat(botForm.investment_amount),
-          run_hours: 24, // Default for auto mode
           api_key: botForm.api_key.trim(),
           api_secret: botForm.api_secret.trim(),
         };
@@ -196,7 +196,7 @@ export const TradingBots: React.FC = () => {
               botConfig.leverage = leverageValue;
             }
           }
-          botConfig.strategy_type = botForm.strategy_type;
+          // Strategy type is auto-decided by the bot based on market analysis
         }
       } else {
         // Manual mode - full config
@@ -222,7 +222,7 @@ export const TradingBots: React.FC = () => {
               botConfig.leverage = leverageValue;
             }
           }
-          botConfig.strategy_type = botForm.strategy_type;
+          // Strategy type is auto-decided by the bot based on market analysis
         }
       }
 
@@ -381,8 +381,8 @@ export const TradingBots: React.FC = () => {
               key={tab}
               onClick={() => setActiveTab(tab as any)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === tab
-                  ? 'bg-purple-500 text-white'
-                  : 'text-gray-400 hover:text-white'
+                ? 'bg-purple-500 text-white'
+                : 'text-gray-400 hover:text-white'
                 }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -646,7 +646,7 @@ export const TradingBots: React.FC = () => {
 
                 {/* Futures-specific fields for Auto Mode */}
                 {botForm.type === 'futures' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div className="space-y-4 mt-4">
                     <div>
                       <Input
                         label="Leverage (Optional)"
@@ -660,17 +660,10 @@ export const TradingBots: React.FC = () => {
                         Leave empty to let AI decide, or enter a value ≥ 1
                       </p>
                     </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-300">Strategy Type</label>
-                      <select
-                        value={botForm.strategy_type}
-                        onChange={(e) => setBotForm({ ...botForm, strategy_type: e.target.value })}
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        required
-                      >
-                        <option value="long">Long</option>
-                        <option value="short">Short</option>
-                      </select>
+                    <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
+                      <p className="text-xs text-purple-300">
+                        <span className="font-medium">🤖 Auto Strategy:</span> The bot will automatically determine the optimal position direction (Long/Short) based on real-time market analysis.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -761,7 +754,7 @@ export const TradingBots: React.FC = () => {
 
                 {/* Futures-specific fields */}
                 {botForm.type === 'futures' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div>
                       <Input
                         label="Leverage (Optional)"
@@ -775,17 +768,10 @@ export const TradingBots: React.FC = () => {
                         Leave empty to let AI decide, or enter a value ≥ 1
                       </p>
                     </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-300">Strategy Type</label>
-                      <select
-                        value={botForm.strategy_type}
-                        onChange={(e) => setBotForm({ ...botForm, strategy_type: e.target.value })}
-                        className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        required
-                      >
-                        <option value="long">Long</option>
-                        <option value="short">Short</option>
-                      </select>
+                    <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
+                      <p className="text-xs text-purple-300">
+                        <span className="font-medium">🤖 Auto Strategy:</span> The bot will automatically determine the optimal position direction (Long/Short) based on real-time market analysis.
+                      </p>
                     </div>
                   </div>
                 )}
