@@ -176,14 +176,14 @@ export const TradingBots: React.FC = () => {
       let botConfig: any;
 
       if (botForm.mode === 'auto') {
-        // Auto mode - AI handles most parameters but user controls grid size and trading pair
-        // No duration specified - bot runs continuously until manually stopped
+        // Auto mode - AI handles price ranges but user controls duration, grid size and trading pair
         botConfig = {
           mode: 'auto',
           symbol: botForm.symbol,
           grid_size: gridSize, // User-controlled grid size
           exchange: botForm.exchange,
           investment_amount: parseFloat(botForm.investment_amount),
+          run_hours: parseInt(botForm.run_hours), // User-controlled duration
           api_key: botForm.api_key.trim(),
           api_secret: botForm.api_secret.trim(),
         };
@@ -642,6 +642,35 @@ export const TradingBots: React.FC = () => {
                       <p className="text-xs text-red-400 mt-1">{gridSizeError}</p>
                     )}
                   </div>
+                </div>
+
+                {/* Run Hours - for Auto Mode */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-300">Run Hours</label>
+                  <select
+                    value={botForm.run_hours}
+                    onChange={(e) => setBotForm({ ...botForm, run_hours: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    required
+                  >
+                    <option value="">Select Duration</option>
+                    {Array.isArray(runHours) && runHours.length > 0 ? (
+                      runHours.map((hour) => (
+                        <option key={hour.toString()} value={hour}>
+                          {hour} hours
+                        </option>
+                      ))
+                    ) : (
+                      [24, 48, 72, 168].map((hour) => (
+                        <option key={hour.toString()} value={hour}>
+                          {hour} hours
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <p className="text-xs text-gray-400">
+                    How long the bot should run before automatically stopping
+                  </p>
                 </div>
 
                 {/* Futures-specific fields for Auto Mode */}
