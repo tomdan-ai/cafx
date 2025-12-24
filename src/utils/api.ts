@@ -180,7 +180,7 @@ export const apiService = {
     if (config.strategy_type) payload.strategy_type = config.strategy_type;
     if (config.run_hours !== undefined) payload.run_hours = Number(config.run_hours);
 
-    const response = await api.post('/api/futures/start-bot', payload);
+    const response = await api.post('/api/futures/start-bot/', payload);
 
     return response.data;
   },
@@ -234,7 +234,7 @@ export const apiService = {
     if (config.run_hours !== undefined) payload.run_hours = Number(config.run_hours);
 
     // Use correct spot endpoint
-    const response = await api.post('/api/spot/start-spot', payload);
+    const response = await api.post('/api/spot/start-spot/', payload);
 
     return response.data;
   },
