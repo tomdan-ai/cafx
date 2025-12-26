@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { apiService } from '../utils/api';
 import { Plus, BarChart3, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getErrorMessage, isAuthError, isServerError } from '../utils/errorUtils';
 
 interface DashboardStatsType {
   active_bots: number;
@@ -35,23 +36,56 @@ export const Dashboard: React.FC = () => {
         setLoading(true);
       }
 
-      // Fetch data from multiple endpoints
-      const [botsResponse, connectedExchangesResponse, userProfile] = await Promise.all([
-        apiService.getAllBots(),
+      console.log('📊 Fetching Dashboard data...');
+
+      // Fetch data from multiple endpoints - use the same endpoints as TradingBots page
+      const [spotBotsResponse, futuresBotsResponse, connectedExchangesResponse, userProfile] = await Promise.all([
+        apiService.getSpotBots(),
+        apiService.getFuturesBots(),
         apiService.getConnectedExchanges(),
         apiService.getProfile().catch(() => null)
       ]);
 
-      // Ensure botsResponse is an array
-      const allBots = Array.isArray(botsResponse) ? botsResponse : [];
-      // Normalize connected exchanges response. The API may return an object with
-      // { count, exchanges } or it might return an array directly or an object
-      // missing the `exchanges` property. Be defensive to avoid runtime errors.
-      const connectedExchangesData = connectedExchangesResponse || {};
+      console.log('✅ Dashboard data fetched:', {
+        spotBots: spotBotsResponse,
+        futuresBots: futuresBotsResponse
+      });
 
-      // Support these possible shapes:
-      // - Array: [{...}, ...]
-      // - Object: { count: number, exchanges: [...] }
+      // Normalize bot data - same logic as TradingBots page
+      const normalizeBot = (bot: any, type: 'spot' | 'futures') => ({
+        id: bot.id ?? bot.pk ?? bot._id ?? String(bot.task_id || bot.taskId || Math.random()),
+        name: bot.name || bot.pair || `${type.toUpperCase()} Bot`,
+        type,
+        exchange: bot.exchange || bot.exchange_name || bot.exchange_id || 'Unknown',
+        pair: bot.pair || bot.symbol || bot.pair_symbol || '',
+        status: bot.is_running || bot.status === 'running' || bot.status === 'active' ? 'active' : 'inactive',
+        is_running: bot.is_running || bot.status === 'running' || bot.status === 'active',
+        profit_loss: bot.profit_loss ?? bot.profit ?? 0,
+        investment_amount: bot.investment_amount || 0,
+        created_at: bot.date_created || bot.created_at || bot.created || new Date().toISOString(),
+        task_id: bot.task_id || bot.taskId || bot.task || undefined,
+        strategy_type: type,
+        __raw: bot
+      });
+
+      const futuresBots = Array.isArray(futuresBotsResponse) 
+        ? futuresBotsResponse.map((b: any) => normalizeBot(b, 'futures')) 
+        : [];
+      const spotBots = Array.isArray(spotBotsResponse) 
+        ? spotBotsResponse.map((b: any) => normalizeBot(b, 'spot')) 
+        : [];
+
+      const allBots = [...futuresBots, ...spotBots];
+
+      console.log('📊 Normalized bots:', {
+        total: allBots.length,
+        futures: futuresBots.length,
+        spot: spotBots.length,
+        allBots
+      });
+
+      // Normalize connected exchanges response
+      const connectedExchangesData = connectedExchangesResponse || {};
       let exchangesArray: any[] = [];
       if (Array.isArray(connectedExchangesResponse)) {
         exchangesArray = connectedExchangesResponse as any[];
@@ -61,27 +95,24 @@ export const Dashboard: React.FC = () => {
 
       const connectedCount = (connectedExchangesData as any).count ?? exchangesArray.filter((ex: any) => ex?.connected).length;
 
-      // Calculate totals
-      const activeBotsData = allBots.filter((bot: any) => bot.is_running);
-      const runningFuturesBots = activeBotsData.filter((bot: any) => bot.strategy_type === 'futures');
-      const runningSpotBots = activeBotsData.filter((bot: any) => bot.strategy_type === 'spot');
+      // Calculate totals - filter by is_running field
+      const activeBotsData = allBots.filter((bot: any) => bot.is_running === true);
+      const runningFuturesBots = activeBotsData.filter((bot: any) => bot.type === 'futures');
+      const runningSpotBots = activeBotsData.filter((bot: any) => bot.type === 'spot');
       
+      console.log('✅ Active bots calculated:', {
+        active: activeBotsData.length,
+        futures: runningFuturesBots.length,
+        spot: runningSpotBots.length,
+        activeBots: activeBotsData
+      });
+
       // Store active bots in state for rendering
       setActiveBots(activeBotsData);
 
       // Calculate total profit from real bot data
       const totalProfit = activeBotsData.reduce((total: number, bot: any) => {
-        // Use actual profit data if available, otherwise calculate based on performance
-        const profit = bot.total_profit || bot.profit || 0;
-        const amount = parseFloat(bot.investment_amount) || 0;
-        
-        // If no profit data, calculate based on bot performance metrics
-        if (profit === 0 && amount > 0) {
-          // Use bot's actual performance data if available
-          const performance = bot.performance_percentage || 0;
-          return total + (amount * (performance / 100));
-        }
-        
+        const profit = bot.profit_loss || 0;
         return total + profit;
       }, 0);
 
@@ -89,13 +120,15 @@ export const Dashboard: React.FC = () => {
 
       const dashboardStats: DashboardStatsType = {
         active_bots: activeBotsData.length,
-        total_profit: Math.round(totalProfit * 100) / 100, // Round to 2 decimal places
+        total_profit: Math.round(totalProfit * 100) / 100,
         connected_exchanges: connectedCount,
         subscription_tier: subscriptionTier,
         total_bots: allBots.length,
         running_futures_bots: runningFuturesBots.length,
         running_spot_bots: runningSpotBots.length
       };
+
+      console.log('✅ Dashboard stats:', dashboardStats);
 
       setStats(dashboardStats);
 
@@ -104,7 +137,7 @@ export const Dashboard: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      console.error('❌ Failed to fetch dashboard data:', error);
       
       // Set default stats if API fails
       const defaultStats: DashboardStatsType = {
@@ -119,7 +152,14 @@ export const Dashboard: React.FC = () => {
       setStats(defaultStats);
 
       if (isRefresh) {
-        toast.error('Failed to refresh dashboard data');
+        if (isAuthError(error)) {
+          toast.error('Session expired. Please log in again.');
+        } else if (isServerError(error)) {
+          toast.error('Unable to refresh data. Please try again.');
+        } else {
+          const message = getErrorMessage(error, 'Failed to refresh dashboard data.');
+          toast.error(message);
+        }
       }
     } finally {
       setLoading(false);
@@ -209,25 +249,27 @@ export const Dashboard: React.FC = () => {
             </div>
             <div className="grid gap-3">
               {/* Display actual active bot data */}
-              {activeBots.slice(0, 3).map((bot: any, index: number) => {
-                const profit = bot.total_profit || bot.profit || 0;
-                const amount = parseFloat(bot.investment_amount) || 0;
-                const performance = bot.performance_percentage || 0;
-                const displayProfit = profit !== 0 ? profit : (amount * (performance / 100));
+              {activeBots.slice(0, 5).map((bot: any, index: number) => {
+                const displayProfit = bot.profit_loss || 0;
                 const isPositive = displayProfit >= 0;
                 
                 return (
-                  <div key={bot.id || index} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                  <div 
+                    key={bot.id || index} 
+                    className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-purple-500/50 transition-all cursor-pointer"
+                    onClick={() => navigate('/trading-bots')}
+                  >
                     <div className="flex items-center space-x-3">
-                      <div className={`w-2 h-2 rounded-full animate-pulse ${
-                        isPositive ? 'bg-green-400' : 'bg-red-400'
-                      }`}></div>
-                      <div>
-                        <div className="text-white font-medium">
-                          {bot.symbol || `${bot.exchange} Bot`}
-                        </div>
-                        <div className="text-sm text-gray-400">
-                          Running • {bot.strategy_type === 'futures' ? 'Futures' : 'Spot'} Trading
+                      <div className="w-2 h-2 rounded-full animate-pulse bg-green-400"></div>
+                      <div className="flex items-center space-x-2">
+                        <img src="/MERLIN.png" alt="Bot" className="w-6 h-6 object-contain" />
+                        <div>
+                          <div className="text-white font-medium">
+                            {bot.pair || bot.name || `${bot.exchange} Bot`}
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            {bot.exchange} • {bot.type === 'futures' ? 'Futures' : 'Spot'}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -237,14 +279,14 @@ export const Dashboard: React.FC = () => {
                       }`}>
                         {isPositive ? '+' : ''}${displayProfit.toFixed(2)}
                       </div>
-                      <div className="text-xs text-gray-400">Total</div>
+                      <div className="text-xs text-gray-400">P&L</div>
                     </div>
                   </div>
                 );
               })}
             </div>
-            {stats.active_bots > 3 && (
-              <div className="text-center">
+            {stats.active_bots > 5 && (
+              <div className="text-center pt-2">
                 <Button 
                   variant="outline" 
                   size="sm" 

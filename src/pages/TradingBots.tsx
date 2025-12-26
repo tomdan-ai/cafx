@@ -4,11 +4,12 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
+import { BotDetailsModal } from '../components/dashboard/BotDetailsModal';
 import { apiService } from '../utils/api';
 import { useAuthStore } from '../store/authStore';
-import { Play, Pause, Square, Plus, TrendingUp, TrendingDown, Key, Eye, EyeOff } from 'lucide-react';
+import { Play, Pause, Square, Plus, TrendingUp, TrendingDown, Key, Eye, EyeOff, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getErrorMessage } from '../utils/errorUtils';
+import { getErrorMessage, isAuthError, isPermissionError, isValidationError, isServerError } from '../utils/errorUtils';
 
 interface TradingBot {
   id: string;
@@ -40,6 +41,8 @@ export const TradingBots: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [showApiSecret, setShowApiSecret] = useState(false);
   const [gridSizeError, setGridSizeError] = useState('');
+  const [selectedBot, setSelectedBot] = useState<TradingBot | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   const [botForm, setBotForm] = useState({
     name: '',
@@ -91,6 +94,7 @@ export const TradingBots: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      console.log('🔄 Loading Trading Bots page data...');
       try {
         // Fetch only the authenticated user's bots using the spot/futures endpoints
         const [spotBotsResponse, futuresBotsResponse, supportedExchangesResponse, pairsResponse, runHoursResponse] = await Promise.all([
@@ -106,14 +110,31 @@ export const TradingBots: React.FC = () => {
 
         // API endpoints now properly scope to user, so we can directly combine the bots
         const combined = [...futuresBots, ...spotBots];
+        
+        console.log('✅ Bots loaded:', {
+          total: combined.length,
+          futures: futuresBots.length,
+          spot: spotBots.length,
+          bots: combined
+        });
+        
         setBots(combined as unknown as TradingBot[]);
 
         setSupportedExchanges(supportedExchangesResponse || []);
         setPairs(Array.isArray(pairsResponse) ? pairsResponse : []);
         setRunHours(Array.isArray(runHoursResponse) ? runHoursResponse : [24, 48, 72, 168]);
       } catch (error: any) {
-        console.error('Failed to fetch data:', error);
-        toast.error(getErrorMessage(error, 'Failed to load data'));
+        console.error('❌ Failed to fetch data:', error);
+        
+        if (isAuthError(error)) {
+          toast.error('Session expired. Please log in again.');
+          setTimeout(() => navigate('/auth/login'), 2000);
+        } else if (isServerError(error)) {
+          toast.error('Unable to load bots. Please refresh the page.');
+        } else {
+          const message = getErrorMessage(error, 'Failed to load data. Please refresh the page.');
+          toast.error(message);
+        }
       } finally {
         setLoading(false);
       }
@@ -263,26 +284,32 @@ export const TradingBots: React.FC = () => {
 
       toast.success('Bot created and started successfully!');
     } catch (error: any) {
-      const status = error.response?.status;
-      const detail = (error.response?.data?.detail || error.response?.data?.message || '').toString();
-
+      console.error('❌ Failed to create bot:', error);
+      
       // Enhanced error handling with better user guidance
-      if (status === 403 && detail.toLowerCase().includes('subscription')) {
-        const prompt = `${detail}\n\nOpen subscription page to upgrade/manage?`;
-        if (window.confirm(prompt)) {
-          navigate('/subscription');
+      if (isAuthError(error)) {
+        toast.error('Session expired. Please log in again.');
+        setTimeout(() => navigate('/auth/login'), 2000);
+      } else if (isPermissionError(error)) {
+        const message = getErrorMessage(error);
+        if (message.toLowerCase().includes('subscription')) {
+          const confirmUpgrade = window.confirm(
+            `${message}\n\nWould you like to upgrade your subscription?`
+          );
+          if (confirmUpgrade) {
+            navigate('/subscription');
+          }
         } else {
-          toast.error(getErrorMessage(error, detail || 'Action not allowed'));
+          toast.error(message);
         }
-      } else if (status === 400) {
-        // Handle validation errors better
-        toast.error(getErrorMessage(error, 'Please check your input values'));
-      } else if (status === 401) {
-        toast.error('Invalid API credentials. Please check your exchange API key and secret.');
-      } else if (status >= 500) {
-        toast.error('Server error. Please try again in a moment.');
+      } else if (isValidationError(error)) {
+        const message = getErrorMessage(error);
+        toast.error(message, { duration: 5000 });
+      } else if (isServerError(error)) {
+        toast.error('Server error. Our team has been notified. Please try again in a moment.');
       } else {
-        toast.error(getErrorMessage(error, 'Failed to create bot'));
+        const message = getErrorMessage(error, 'Failed to create bot. Please check your settings and try again.');
+        toast.error(message, { duration: 4000 });
       }
     } finally {
       setCreating(false);
@@ -295,12 +322,16 @@ export const TradingBots: React.FC = () => {
       return;
     }
 
+    console.log('🛑 Attempting to stop bot:', bot);
+
     try {
       if (bot.type === 'futures') {
         await apiService.stopFuturesBot(bot.task_id);
       } else {
         await apiService.stopSpotBot(bot.task_id);
       }
+
+      console.log('✅ Bot stopped, refreshing list...');
 
       // Refresh bots list (user scoped)
       const [refreshedSpot2, refreshedFutures2] = await Promise.all([
@@ -315,7 +346,96 @@ export const TradingBots: React.FC = () => {
 
       toast.success('Bot stopped successfully!');
     } catch (error: any) {
-      toast.error(getErrorMessage(error, 'Failed to stop bot'));
+      console.error('❌ Failed to stop bot:', error);
+      
+      if (isAuthError(error)) {
+        toast.error('Session expired. Please log in again.');
+      } else if (isPermissionError(error)) {
+        toast.error('You do not have permission to stop this bot.');
+      } else {
+        const message = getErrorMessage(error, 'Failed to stop bot. Please try again.');
+        toast.error(message);
+      }
+    }
+  };
+
+  const handleViewDetails = (bot: TradingBot) => {
+    console.log('👁️ Opening details for bot:', bot);
+    setSelectedBot(bot);
+    setShowDetailsModal(true);
+  };
+
+  const handleRefreshBots = async () => {
+    console.log('🔄 Refreshing bots list...');
+    const [refreshedSpot, refreshedFutures] = await Promise.all([
+      apiService.getSpotBots(),
+      apiService.getFuturesBots(),
+    ]);
+    const refreshed = [
+      ...(Array.isArray(refreshedFutures) ? refreshedFutures.map((b: any) => normalizeBot(b, 'futures')) : []),
+      ...(Array.isArray(refreshedSpot) ? refreshedSpot.map((b: any) => normalizeBot(b, 'spot')) : [])
+    ];
+    setBots(refreshed as unknown as TradingBot[]);
+    console.log('✅ Bots list refreshed');
+  };
+
+  const handleDeleteBot = async (bot: TradingBot) => {
+    if (!bot.id) {
+      toast.error('Cannot delete bot: No ID found');
+      return;
+    }
+
+    // Confirm deletion
+    const confirmMessage = bot.status === 'active' 
+      ? 'This bot is still active. Are you sure you want to delete it? This will stop the bot and remove it permanently.'
+      : 'Are you sure you want to delete this bot? This action cannot be undone.';
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    console.log('🗑️ Attempting to delete bot:', bot);
+
+    try {
+      // If bot is active, stop it first
+      if (bot.status === 'active' && bot.task_id) {
+        console.log('⚠️ Bot is active, stopping first...');
+        if (bot.type === 'futures') {
+          await apiService.stopFuturesBot(bot.task_id);
+        } else {
+          await apiService.stopSpotBot(bot.task_id);
+        }
+        console.log('✅ Bot stopped');
+      }
+
+      // Delete the bot
+      if (bot.type === 'futures') {
+        await apiService.deleteFuturesBot(Number(bot.id));
+      } else {
+        await apiService.deleteSpotBot(Number(bot.id));
+      }
+
+      console.log('✅ Bot deleted, refreshing list...');
+
+      // Refresh bots list
+      await handleRefreshBots();
+
+      toast.success('Bot deleted successfully!');
+    } catch (error: any) {
+      console.error('❌ Failed to delete bot:', error);
+      
+      // Check if it's a 404 (bot already deleted)
+      if (error.response?.status === 404) {
+        toast.success('Bot was already removed.');
+        await handleRefreshBots();
+      } else if (isAuthError(error)) {
+        toast.error('Session expired. Please log in again.');
+      } else if (isPermissionError(error)) {
+        toast.error('You do not have permission to delete this bot.');
+      } else {
+        const message = getErrorMessage(error, 'Failed to delete bot. Please try again.');
+        toast.error(message);
+      }
     }
   };
 
@@ -419,6 +539,14 @@ export const TradingBots: React.FC = () => {
                   </div>
                 </div>
 
+                {bot.status === 'inactive' && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2">
+                    <p className="text-xs text-yellow-300">
+                      ⚠️ Bot has stopped running. You can delete it to clean up your list.
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-400">P&L</span>
                   <div className="flex items-center space-x-1">
@@ -439,10 +567,11 @@ export const TradingBots: React.FC = () => {
                     variant="outline"
                     size="sm"
                     className="flex-1"
+                    onClick={() => handleViewDetails(bot)}
                   >
                     View Details
                   </Button>
-                  {bot.status === 'active' && (
+                  {bot.status === 'active' ? (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -451,12 +580,36 @@ export const TradingBots: React.FC = () => {
                     >
                       Stop
                     </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-400 hover:text-red-400"
+                      onClick={() => handleDeleteBot(bot)}
+                      title="Delete inactive bot"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   )}
                 </div>
               </div>
             </Card>
           ))}
         </div>
+
+        {/* Bot Details Modal */}
+        {selectedBot && (
+          <BotDetailsModal
+            isOpen={showDetailsModal}
+            onClose={() => {
+              setShowDetailsModal(false);
+              setSelectedBot(null);
+            }}
+            bot={selectedBot}
+            onStopBot={handleRefreshBots}
+            onDeleteBot={() => handleDeleteBot(selectedBot)}
+          />
+        )}
 
         {/* Create Bot Modal */}
         <Modal
