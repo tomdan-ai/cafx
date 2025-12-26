@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/authStore';
 import { Play, Pause, Square, Plus, TrendingUp, TrendingDown, Key, Eye, EyeOff, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, isAuthError, isPermissionError, isValidationError, isServerError } from '../utils/errorUtils';
+import { saveBotConfig, deleteBotConfig } from '../utils/botStorage';
 
 interface TradingBot {
   id: string;
@@ -94,7 +95,6 @@ export const TradingBots: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      console.log('🔄 Loading Trading Bots page data...');
       try {
         // Fetch only the authenticated user's bots using the spot/futures endpoints
         const [spotBotsResponse, futuresBotsResponse, supportedExchangesResponse, pairsResponse, runHoursResponse] = await Promise.all([
@@ -111,20 +111,12 @@ export const TradingBots: React.FC = () => {
         // API endpoints now properly scope to user, so we can directly combine the bots
         const combined = [...futuresBots, ...spotBots];
         
-        console.log('✅ Bots loaded:', {
-          total: combined.length,
-          futures: futuresBots.length,
-          spot: spotBots.length,
-          bots: combined
-        });
-        
         setBots(combined as unknown as TradingBot[]);
 
         setSupportedExchanges(supportedExchangesResponse || []);
         setPairs(Array.isArray(pairsResponse) ? pairsResponse : []);
         setRunHours(Array.isArray(runHoursResponse) ? runHoursResponse : [24, 48, 72, 168]);
       } catch (error: any) {
-        console.error('❌ Failed to fetch data:', error);
         
         if (isAuthError(error)) {
           toast.error('Session expired. Please log in again.');
@@ -248,9 +240,53 @@ export const TradingBots: React.FC = () => {
       }
 
       if (botForm.type === 'futures') {
-        await apiService.startFuturesBot(botConfig);
+        const response = await apiService.startFuturesBot(botConfig);
+        
+        // Save complete bot details from API response to localStorage
+        if (response && response.bot_id) {
+          saveBotConfig({
+            bot_id: String(response.bot_id),
+            task_id: response.task_id || response.task || '',
+            name: botForm.name || response.name || `${botForm.symbol} Bot`,
+            mode: botForm.mode,
+            type: 'futures',
+            exchange: botForm.exchange,
+            symbol: botForm.symbol,
+            grid_size: response.grid_size || gridSize,
+            upper_price: response.upper_price || botConfig.upper_price,
+            lower_price: response.lower_price || botConfig.lower_price,
+            investment_amount: response.investment_amount || parseFloat(botForm.investment_amount),
+            run_hours: response.run_hours || parseInt(botForm.run_hours),
+            leverage: response.leverage || botConfig.leverage,
+            strategy_type: response.strategy_type || botConfig.strategy_type,
+            created_at: response.date_created || response.created_at || new Date().toISOString(),
+            // Store the complete API response for reference
+            api_response: response
+          });
+        }
       } else {
-        await apiService.startSpotBot(botConfig);
+        const response = await apiService.startSpotBot(botConfig);
+        
+        // Save complete bot details from API response to localStorage
+        if (response && response.bot_id) {
+          saveBotConfig({
+            bot_id: String(response.bot_id),
+            task_id: response.task_id || response.task || '',
+            name: botForm.name || response.name || `${botForm.symbol} Bot`,
+            mode: botForm.mode,
+            type: 'spot',
+            exchange: botForm.exchange,
+            symbol: botForm.symbol,
+            grid_size: response.grid_size || gridSize,
+            upper_price: response.upper_price || botConfig.upper_price,
+            lower_price: response.lower_price || botConfig.lower_price,
+            investment_amount: response.investment_amount || parseFloat(botForm.investment_amount),
+            run_hours: response.run_hours || parseInt(botForm.run_hours),
+            created_at: response.date_created || response.created_at || new Date().toISOString(),
+            // Store the complete API response for reference
+            api_response: response
+          });
+        }
       }
 
       // Refresh bots list (user scoped)
@@ -284,7 +320,6 @@ export const TradingBots: React.FC = () => {
 
       toast.success('Bot created and started successfully!');
     } catch (error: any) {
-      console.error('❌ Failed to create bot:', error);
       
       // Enhanced error handling with better user guidance
       if (isAuthError(error)) {
@@ -322,16 +357,12 @@ export const TradingBots: React.FC = () => {
       return;
     }
 
-    console.log('🛑 Attempting to stop bot:', bot);
-
     try {
       if (bot.type === 'futures') {
         await apiService.stopFuturesBot(bot.task_id);
       } else {
         await apiService.stopSpotBot(bot.task_id);
       }
-
-      console.log('✅ Bot stopped, refreshing list...');
 
       // Refresh bots list (user scoped)
       const [refreshedSpot2, refreshedFutures2] = await Promise.all([
@@ -346,7 +377,6 @@ export const TradingBots: React.FC = () => {
 
       toast.success('Bot stopped successfully!');
     } catch (error: any) {
-      console.error('❌ Failed to stop bot:', error);
       
       if (isAuthError(error)) {
         toast.error('Session expired. Please log in again.');
@@ -360,13 +390,11 @@ export const TradingBots: React.FC = () => {
   };
 
   const handleViewDetails = (bot: TradingBot) => {
-    console.log('👁️ Opening details for bot:', bot);
     setSelectedBot(bot);
     setShowDetailsModal(true);
   };
 
   const handleRefreshBots = async () => {
-    console.log('🔄 Refreshing bots list...');
     const [refreshedSpot, refreshedFutures] = await Promise.all([
       apiService.getSpotBots(),
       apiService.getFuturesBots(),
@@ -376,7 +404,6 @@ export const TradingBots: React.FC = () => {
       ...(Array.isArray(refreshedSpot) ? refreshedSpot.map((b: any) => normalizeBot(b, 'spot')) : [])
     ];
     setBots(refreshed as unknown as TradingBot[]);
-    console.log('✅ Bots list refreshed');
   };
 
   const handleDeleteBot = async (bot: TradingBot) => {
@@ -394,18 +421,14 @@ export const TradingBots: React.FC = () => {
       return;
     }
 
-    console.log('🗑️ Attempting to delete bot:', bot);
-
     try {
       // If bot is active, stop it first
       if (bot.status === 'active' && bot.task_id) {
-        console.log('⚠️ Bot is active, stopping first...');
         if (bot.type === 'futures') {
           await apiService.stopFuturesBot(bot.task_id);
         } else {
           await apiService.stopSpotBot(bot.task_id);
         }
-        console.log('✅ Bot stopped');
       }
 
       // Delete the bot
@@ -415,18 +438,19 @@ export const TradingBots: React.FC = () => {
         await apiService.deleteSpotBot(Number(bot.id));
       }
 
-      console.log('✅ Bot deleted, refreshing list...');
+      // Delete from localStorage
+      deleteBotConfig(bot.id);
 
       // Refresh bots list
       await handleRefreshBots();
 
       toast.success('Bot deleted successfully!');
     } catch (error: any) {
-      console.error('❌ Failed to delete bot:', error);
       
       // Check if it's a 404 (bot already deleted)
       if (error.response?.status === 404) {
         toast.success('Bot was already removed.');
+        deleteBotConfig(bot.id);
         await handleRefreshBots();
       } else if (isAuthError(error)) {
         toast.error('Session expired. Please log in again.');
@@ -606,7 +630,9 @@ export const TradingBots: React.FC = () => {
               setSelectedBot(null);
             }}
             bot={selectedBot}
-            onStopBot={handleRefreshBots}
+            onStopBot={async () => {
+              await handleStopBot(selectedBot);
+            }}
             onDeleteBot={() => handleDeleteBot(selectedBot)}
           />
         )}

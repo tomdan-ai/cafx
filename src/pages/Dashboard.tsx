@@ -36,8 +36,6 @@ export const Dashboard: React.FC = () => {
         setLoading(true);
       }
 
-      console.log('📊 Fetching Dashboard data...');
-
       // Fetch data from multiple endpoints - use the same endpoints as TradingBots page
       const [spotBotsResponse, futuresBotsResponse, connectedExchangesResponse, userProfile] = await Promise.all([
         apiService.getSpotBots(),
@@ -45,11 +43,6 @@ export const Dashboard: React.FC = () => {
         apiService.getConnectedExchanges(),
         apiService.getProfile().catch(() => null)
       ]);
-
-      console.log('✅ Dashboard data fetched:', {
-        spotBots: spotBotsResponse,
-        futuresBots: futuresBotsResponse
-      });
 
       // Normalize bot data - same logic as TradingBots page
       const normalizeBot = (bot: any, type: 'spot' | 'futures') => ({
@@ -77,13 +70,6 @@ export const Dashboard: React.FC = () => {
 
       const allBots = [...futuresBots, ...spotBots];
 
-      console.log('📊 Normalized bots:', {
-        total: allBots.length,
-        futures: futuresBots.length,
-        spot: spotBots.length,
-        allBots
-      });
-
       // Normalize connected exchanges response
       const connectedExchangesData = connectedExchangesResponse || {};
       let exchangesArray: any[] = [];
@@ -100,13 +86,6 @@ export const Dashboard: React.FC = () => {
       const runningFuturesBots = activeBotsData.filter((bot: any) => bot.type === 'futures');
       const runningSpotBots = activeBotsData.filter((bot: any) => bot.type === 'spot');
       
-      console.log('✅ Active bots calculated:', {
-        active: activeBotsData.length,
-        futures: runningFuturesBots.length,
-        spot: runningSpotBots.length,
-        activeBots: activeBotsData
-      });
-
       // Store active bots in state for rendering
       setActiveBots(activeBotsData);
 
@@ -128,8 +107,6 @@ export const Dashboard: React.FC = () => {
         running_spot_bots: runningSpotBots.length
       };
 
-      console.log('✅ Dashboard stats:', dashboardStats);
-
       setStats(dashboardStats);
 
       if (isRefresh) {
@@ -137,7 +114,6 @@ export const Dashboard: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('❌ Failed to fetch dashboard data:', error);
       
       // Set default stats if API fails
       const defaultStats: DashboardStatsType = {
