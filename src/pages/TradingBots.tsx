@@ -4,6 +4,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { BotDetailsModal } from '../components/dashboard/BotDetailsModal';
 import { apiService } from '../utils/api';
 import { useAuthStore } from '../store/authStore';
@@ -44,6 +45,9 @@ export const TradingBots: React.FC = () => {
   const [gridSizeError, setGridSizeError] = useState('');
   const [selectedBot, setSelectedBot] = useState<TradingBot | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [botToDelete, setBotToDelete] = useState<TradingBot | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [botForm, setBotForm] = useState({
     name: '',
@@ -242,50 +246,58 @@ export const TradingBots: React.FC = () => {
       if (botForm.type === 'futures') {
         const response = await apiService.startFuturesBot(botConfig);
         
+        console.log('🚀 Futures bot created - API response:', response);
+        console.log('📝 Form values - mode:', botForm.mode, 'run_hours:', botForm.run_hours);
+        
         // Save complete bot details from API response to localStorage
         if (response && response.bot_id) {
-          saveBotConfig({
+          const configToSave = {
             bot_id: String(response.bot_id),
             task_id: response.task_id || response.task || '',
             name: botForm.name || response.name || `${botForm.symbol} Bot`,
-            mode: botForm.mode,
-            type: 'futures',
-            exchange: botForm.exchange,
-            symbol: botForm.symbol,
+            mode: botForm.mode, // Always use form value
+            type: 'futures' as const,
+            exchange: response.exchange || botForm.exchange,
+            symbol: response.symbol || botForm.symbol,
             grid_size: response.grid_size || gridSize,
             upper_price: response.upper_price || botConfig.upper_price,
             lower_price: response.lower_price || botConfig.lower_price,
             investment_amount: response.investment_amount || parseFloat(botForm.investment_amount),
-            run_hours: response.run_hours || parseInt(botForm.run_hours),
+            run_hours: parseInt(botForm.run_hours), // Always use form value
             leverage: response.leverage || botConfig.leverage,
             strategy_type: response.strategy_type || botConfig.strategy_type,
             created_at: response.date_created || response.created_at || new Date().toISOString(),
-            // Store the complete API response for reference
             api_response: response
-          });
+          };
+          console.log('💾 Saving config to localStorage:', configToSave);
+          saveBotConfig(configToSave);
         }
       } else {
         const response = await apiService.startSpotBot(botConfig);
         
+        console.log('🚀 Spot bot created - API response:', response);
+        console.log('📝 Form values - mode:', botForm.mode, 'run_hours:', botForm.run_hours);
+        
         // Save complete bot details from API response to localStorage
         if (response && response.bot_id) {
-          saveBotConfig({
+          const configToSave = {
             bot_id: String(response.bot_id),
             task_id: response.task_id || response.task || '',
             name: botForm.name || response.name || `${botForm.symbol} Bot`,
-            mode: botForm.mode,
-            type: 'spot',
-            exchange: botForm.exchange,
-            symbol: botForm.symbol,
+            mode: botForm.mode, // Always use form value
+            type: 'spot' as const,
+            exchange: response.exchange || botForm.exchange,
+            symbol: response.symbol || botForm.symbol,
             grid_size: response.grid_size || gridSize,
             upper_price: response.upper_price || botConfig.upper_price,
             lower_price: response.lower_price || botConfig.lower_price,
             investment_amount: response.investment_amount || parseFloat(botForm.investment_amount),
-            run_hours: response.run_hours || parseInt(botForm.run_hours),
+            run_hours: parseInt(botForm.run_hours), // Always use form value
             created_at: response.date_created || response.created_at || new Date().toISOString(),
-            // Store the complete API response for reference
             api_response: response
-          });
+          };
+          console.log('💾 Saving config to localStorage:', configToSave);
+          saveBotConfig(configToSave);
         }
       }
 
@@ -407,59 +419,58 @@ export const TradingBots: React.FC = () => {
   };
 
   const handleDeleteBot = async (bot: TradingBot) => {
-    if (!bot.id) {
-      toast.error('Cannot delete bot: No ID found');
+    setBotToDelete(bot);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteBot = async () => {
+    if (!botToDelete || !botToDelete.task_id) {
+      toast.error('Cannot delete bot: No task ID found');
+      setShowDeleteConfirm(false);
       return;
     }
 
-    // Confirm deletion
-    const confirmMessage = bot.status === 'active' 
-      ? 'This bot is still active. Are you sure you want to delete it? This will stop the bot and remove it permanently.'
-      : 'Are you sure you want to delete this bot? This action cannot be undone.';
-
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
+    setDeleting(true);
 
     try {
-      // If bot is active, stop it first
-      if (bot.status === 'active' && bot.task_id) {
-        if (bot.type === 'futures') {
-          await apiService.stopFuturesBot(bot.task_id);
-        } else {
-          await apiService.stopSpotBot(bot.task_id);
-        }
-      }
-
-      // Delete the bot
-      if (bot.type === 'futures') {
-        await apiService.deleteFuturesBot(Number(bot.id));
+      console.log('🗑️ Deleting bot:', botToDelete.id, botToDelete.task_id);
+      
+      // Use stop endpoint to stop/delete the bot
+      if (botToDelete.type === 'futures') {
+        await apiService.stopFuturesBot(botToDelete.task_id);
       } else {
-        await apiService.deleteSpotBot(Number(bot.id));
+        await apiService.stopSpotBot(botToDelete.task_id);
       }
 
       // Delete from localStorage
-      deleteBotConfig(bot.id);
+      deleteBotConfig(String(botToDelete.id));
+      deleteBotConfig(botToDelete.task_id);
 
-      // Refresh bots list
-      await handleRefreshBots();
+      // Remove from local state immediately
+      setBots(prevBots => prevBots.filter(b => b.id !== botToDelete.id && b.task_id !== botToDelete.task_id));
 
-      toast.success('Bot deleted successfully!');
+      toast.success('Bot removed successfully!');
+      setShowDeleteConfirm(false);
+      setBotToDelete(null);
     } catch (error: any) {
+      console.log('❌ Delete error:', error.response?.status, error.response?.data);
       
-      // Check if it's a 404 (bot already deleted)
+      // If 404, bot is already gone - just remove from local list
       if (error.response?.status === 404) {
-        toast.success('Bot was already removed.');
-        deleteBotConfig(bot.id);
-        await handleRefreshBots();
+        deleteBotConfig(String(botToDelete.id));
+        deleteBotConfig(botToDelete.task_id);
+        setBots(prevBots => prevBots.filter(b => b.id !== botToDelete.id && b.task_id !== botToDelete.task_id));
+        toast.success('Bot removed from list.');
+        setShowDeleteConfirm(false);
+        setBotToDelete(null);
       } else if (isAuthError(error)) {
         toast.error('Session expired. Please log in again.');
-      } else if (isPermissionError(error)) {
-        toast.error('You do not have permission to delete this bot.');
       } else {
-        const message = getErrorMessage(error, 'Failed to delete bot. Please try again.');
+        const message = getErrorMessage(error, 'Failed to remove bot.');
         toast.error(message);
       }
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -564,11 +575,7 @@ export const TradingBots: React.FC = () => {
                 </div>
 
                 {bot.status === 'inactive' && (
-                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2">
-                    <p className="text-xs text-yellow-300">
-                      ⚠️ Bot has stopped running. You can delete it to clean up your list.
-                    </p>
-                  </div>
+                  <></>
                 )}
 
                 <div className="flex items-center justify-between">
@@ -636,6 +643,22 @@ export const TradingBots: React.FC = () => {
             onDeleteBot={() => handleDeleteBot(selectedBot)}
           />
         )}
+
+        {/* Delete Confirmation Modal */}
+        <ConfirmModal
+          isOpen={showDeleteConfirm}
+          onClose={() => {
+            setShowDeleteConfirm(false);
+            setBotToDelete(null);
+          }}
+          onConfirm={confirmDeleteBot}
+          title="Remove Bot"
+          message={`Are you sure you want to remove "${botToDelete?.name || botToDelete?.pair || 'this bot'}"? This will stop the bot and remove it from your list.`}
+          confirmText="Remove"
+          cancelText="Cancel"
+          variant="danger"
+          loading={deleting}
+        />
 
         {/* Create Bot Modal */}
         <Modal

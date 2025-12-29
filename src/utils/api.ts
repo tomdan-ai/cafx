@@ -181,12 +181,13 @@ export const apiService = {
     if (config.run_hours !== undefined) payload.run_hours = Number(config.run_hours);
 
     const response = await api.post('/api/futures/start-bot', payload);
-
+    console.log('🚀 startFuturesBot API response:', response.data);
     return response.data;
   },
 
   stopFuturesBot: async (task_id: string) => {
-    const response = await api.post('/api/futures/stop-bot', { task_id });
+    const response = await api.post('/api/futures/stop-bot/', { task_id });
+    console.log('🛑 stopFuturesBot API response:', response.data);
     return response.data;
   },
 
@@ -235,13 +236,29 @@ export const apiService = {
 
     // Use correct spot endpoint (with trailing slash for Django)
     const response = await api.post('/api/spot/start-spot/', payload);
-
+    console.log('🚀 startSpotBot API response:', response.data);
     return response.data;
   },
 
   stopSpotBot: async (task_id: string) => {
     // Use correct spot stop endpoint
     const response = await api.post('/api/spot/stop-spot/', { task_id });
+    console.log('🛑 stopSpotBot API response:', response.data);
+    return response.data;
+  },
+
+  // Delete bot functions
+  deleteFuturesBot: async (botId: number) => {
+    console.log('🗑️ Deleting futures bot:', botId);
+    const response = await api.delete(`/api/futures/bots/${botId}`);
+    console.log('✅ Delete futures bot response:', response.data);
+    return response.data;
+  },
+
+  deleteSpotBot: async (botId: number) => {
+    console.log('🗑️ Deleting spot bot:', botId);
+    const response = await api.delete(`/api/spot/bots/${botId}`);
+    console.log('✅ Delete spot bot response:', response.data);
     return response.data;
   },
 

@@ -88,9 +88,18 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
     setLoading(true);
     const storedConfig = getBotConfig(bot.id) || getBotConfig(bot.task_id || '');
     
+    console.log('🔍 Loading bot config for:', bot.id, bot.task_id);
+    console.log('📦 Stored config from localStorage:', storedConfig);
+    console.log('🤖 Bot object:', bot);
+    
     if (storedConfig) {
+      console.log('✅ Using stored config');
+      console.log('  - mode:', storedConfig.mode);
+      console.log('  - run_hours:', storedConfig.run_hours);
+      console.log('  - api_response:', storedConfig.api_response);
       setConfig(storedConfig);
     } else {
+      console.log('⚠️ No stored config found, using bot object');
       setConfig({
         bot_id: bot.id,
         task_id: bot.task_id,
@@ -143,6 +152,26 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
     return new Date(date).toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     });
+  };
+
+  // Get duration - just use the stored run_hours from form input
+  const getDuration = () => {
+    console.log('⏱️ Getting duration:');
+    console.log('  - config.run_hours:', config?.run_hours);
+    
+    if (config?.run_hours) {
+      return `${config.run_hours}h`;
+    }
+    return '—';
+  };
+
+  // Get the actual mode - use stored mode from form
+  const getMode = () => {
+    console.log('🎮 Getting mode:');
+    console.log('  - config.mode:', config?.mode);
+    
+    if (config?.mode) return config.mode;
+    return 'manual';
   };
 
   return (
@@ -214,10 +243,10 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
 
           {/* Stats Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-            <StatCard icon={<DollarSign />} label="Investment" value={formatPrice(config.investment_amount)} color="purple" />
-            <StatCard icon={<Layers />} label="Grid Size" value={config.grid_size || '—'} color="blue" />
-            <StatCard icon={<Clock />} label="Duration" value={config.run_hours ? `${config.run_hours}h` : '—'} color="cyan" />
-            <StatCard icon={<Gauge />} label="Mode" value={config.mode === 'auto' ? 'Auto' : 'Manual'} color="green" />
+            <StatCard icon={<DollarSign />} label="Investment" value={formatPrice(config.investment_amount || config.api_response?.investment_amount)} color="purple" />
+            <StatCard icon={<Layers />} label="Grid Size" value={config.grid_size || config.api_response?.grid_size || '—'} color="blue" />
+            <StatCard icon={<Clock />} label="Duration" value={getDuration()} color="cyan" />
+            <StatCard icon={<Gauge />} label="Mode" value={getMode() === 'auto' ? 'Auto' : 'Manual'} color="green" />
           </div>
 
           {/* Price Range */}

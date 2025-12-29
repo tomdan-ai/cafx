@@ -24,12 +24,15 @@ const STORAGE_KEY = 'bot_configurations';
 // Save bot configuration to localStorage
 export function saveBotConfig(config: BotConfig): void {
   try {
+    console.log('💾 saveBotConfig called with:', config);
     const existing = getBotConfigs();
+    console.log('📚 Existing configs count:', existing.length);
     const updated = existing.filter(c => c.bot_id !== config.bot_id);
     updated.push(config);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    console.log('✅ Config saved! Total configs:', updated.length);
   } catch (error) {
-    // Silently fail if localStorage is not available
+    console.error('❌ saveBotConfig error:', error);
   }
 }
 
@@ -45,11 +48,21 @@ export function getBotConfigs(): BotConfig[] {
 }
 
 // Get configuration for a specific bot
-export function getBotConfig(botId: string): BotConfig | null {
+export function getBotConfig(botId: string | number): BotConfig | null {
   try {
     const configs = getBotConfigs();
-    return configs.find(c => c.bot_id === botId || c.task_id === botId) || null;
+    const idStr = String(botId);
+    console.log('🔎 getBotConfig searching for:', idStr);
+    console.log('📚 All stored configs:', configs.map(c => ({ bot_id: c.bot_id, task_id: c.task_id })));
+    
+    const found = configs.find(c => 
+      String(c.bot_id) === idStr || 
+      String(c.task_id) === idStr
+    );
+    console.log('🎯 Found config:', found ? 'YES' : 'NO');
+    return found || null;
   } catch (error) {
+    console.error('❌ getBotConfig error:', error);
     return null;
   }
 }
