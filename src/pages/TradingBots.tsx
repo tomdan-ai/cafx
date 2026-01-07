@@ -11,7 +11,7 @@ import { useAuthStore } from '../store/authStore';
 import { Play, Pause, Square, Plus, TrendingUp, TrendingDown, Key, Eye, EyeOff, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, isAuthError, isPermissionError, isValidationError, isServerError } from '../utils/errorUtils';
-import { saveBotConfig, deleteBotConfig } from '../utils/botStorage';
+import { saveBotConfig, deleteBotConfig, hideBot, isBotHidden, cleanupHiddenBots } from '../utils/botStorage';
 
 interface TradingBot {
   id: string;
@@ -112,8 +112,13 @@ export const TradingBots: React.FC = () => {
         const futuresBots = Array.isArray(futuresBotsResponse) ? futuresBotsResponse.map((b: any) => normalizeBot(b, 'futures')) : [];
         const spotBots = Array.isArray(spotBotsResponse) ? spotBotsResponse.map((b: any) => normalizeBot(b, 'spot')) : [];
 
-        // API endpoints now properly scope to user, so we can directly combine the bots
-        const combined = [...futuresBots, ...spotBots];
+        // Clean up old hidden bots periodically
+        cleanupHiddenBots();
+
+        // Filter out hidden/deleted bots that the user has previously removed
+        const combined = [...futuresBots, ...spotBots].filter((bot: any) => 
+          !isBotHidden(String(bot.id), bot.task_id)
+        );
         
         setBots(combined as unknown as TradingBot[]);
 
@@ -424,8 +429,8 @@ export const TradingBots: React.FC = () => {
   };
 
   const confirmDeleteBot = async () => {
-    if (!botToDelete || !botToDelete.task_id) {
-      toast.error('Cannot delete bot: No task ID found');
+    if (!botToDelete) {
+      toast.error('Cannot delete bot: No bot selected');
       setShowDeleteConfirm(false);
       return;
     }
@@ -435,38 +440,43 @@ export const TradingBots: React.FC = () => {
     try {
       console.log('🗑️ Deleting bot:', botToDelete.id, botToDelete.task_id);
       
-      // Use stop endpoint to stop/delete the bot
-      if (botToDelete.type === 'futures') {
-        await apiService.stopFuturesBot(botToDelete.task_id);
-      } else {
-        await apiService.stopSpotBot(botToDelete.task_id);
+      // Stop the bot if it has a task_id (running bot)
+      if (botToDelete.task_id) {
+        try {
+          if (botToDelete.type === 'futures') {
+            await apiService.stopFuturesBot(botToDelete.task_id);
+          } else {
+            await apiService.stopSpotBot(botToDelete.task_id);
+          }
+          console.log('✅ Bot stopped successfully');
+        } catch (stopError: any) {
+          // Continue even if stop fails (bot might already be stopped)
+          console.log('⚠️ Stop error (continuing):', stopError.response?.status);
+        }
       }
 
-      // Delete from localStorage
+      // Add to hidden bots list so it won't show again after refresh
+      hideBot(String(botToDelete.id), botToDelete.task_id);
+
+      // Delete from localStorage config
       deleteBotConfig(String(botToDelete.id));
-      deleteBotConfig(botToDelete.task_id);
+      if (botToDelete.task_id) {
+        deleteBotConfig(botToDelete.task_id);
+      }
 
       // Remove from local state immediately
       setBots(prevBots => prevBots.filter(b => b.id !== botToDelete.id && b.task_id !== botToDelete.task_id));
 
-      toast.success('Bot removed successfully!');
+      toast.success('Bot deleted successfully!');
       setShowDeleteConfirm(false);
       setBotToDelete(null);
     } catch (error: any) {
       console.log('❌ Delete error:', error.response?.status, error.response?.data);
       
-      // If 404, bot is already gone - just remove from local list
-      if (error.response?.status === 404) {
-        deleteBotConfig(String(botToDelete.id));
-        deleteBotConfig(botToDelete.task_id);
-        setBots(prevBots => prevBots.filter(b => b.id !== botToDelete.id && b.task_id !== botToDelete.task_id));
-        toast.success('Bot removed from list.');
-        setShowDeleteConfirm(false);
-        setBotToDelete(null);
-      } else if (isAuthError(error)) {
+      if (isAuthError(error)) {
         toast.error('Session expired. Please log in again.');
       } else {
-        const message = getErrorMessage(error, 'Failed to remove bot.');
+        const message = getErrorMessage(error, 'Failed to delete bot.');
         toast.error(message);
       }
     } finally {
