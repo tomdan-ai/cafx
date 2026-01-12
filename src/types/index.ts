@@ -31,6 +31,7 @@ export interface TradingBot {
     grid_count: number;
     investment_per_grid: number;
   };
+  meta?: any[];
 }
 
 export interface AuthState {
