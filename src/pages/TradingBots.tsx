@@ -116,17 +116,17 @@ export const TradingBots: React.FC = () => {
         cleanupHiddenBots();
 
         // Filter out hidden/deleted bots that the user has previously removed
-        const combined = [...futuresBots, ...spotBots].filter((bot: any) => 
+        const combined = [...futuresBots, ...spotBots].filter((bot: any) =>
           !isBotHidden(String(bot.id), bot.task_id)
         );
-        
+
         setBots(combined as unknown as TradingBot[]);
 
         setSupportedExchanges(supportedExchangesResponse || []);
         setPairs(Array.isArray(pairsResponse) ? pairsResponse : []);
         setRunHours(Array.isArray(runHoursResponse) ? runHoursResponse : [24, 48, 72, 168]);
       } catch (error: any) {
-        
+
         if (isAuthError(error)) {
           toast.error('Session expired. Please log in again.');
           setTimeout(() => navigate('/auth/login'), 2000);
@@ -250,10 +250,10 @@ export const TradingBots: React.FC = () => {
 
       if (botForm.type === 'futures') {
         const response = await apiService.startFuturesBot(botConfig);
-        
+
         console.log('🚀 Futures bot created - API response:', response);
         console.log('📝 Form values - mode:', botForm.mode, 'run_hours:', botForm.run_hours);
-        
+
         // Save complete bot details from API response to localStorage
         if (response && response.bot_id) {
           const configToSave = {
@@ -279,10 +279,10 @@ export const TradingBots: React.FC = () => {
         }
       } else {
         const response = await apiService.startSpotBot(botConfig);
-        
+
         console.log('🚀 Spot bot created - API response:', response);
         console.log('📝 Form values - mode:', botForm.mode, 'run_hours:', botForm.run_hours);
-        
+
         // Save complete bot details from API response to localStorage
         if (response && response.bot_id) {
           const configToSave = {
@@ -337,7 +337,7 @@ export const TradingBots: React.FC = () => {
 
       toast.success('Bot created and started successfully!');
     } catch (error: any) {
-      
+
       // Enhanced error handling with better user guidance
       if (isAuthError(error)) {
         toast.error('Session expired. Please log in again.');
@@ -394,7 +394,7 @@ export const TradingBots: React.FC = () => {
 
       toast.success('Bot stopped successfully!');
     } catch (error: any) {
-      
+
       if (isAuthError(error)) {
         toast.error('Session expired. Please log in again.');
       } else if (isPermissionError(error)) {
@@ -439,7 +439,7 @@ export const TradingBots: React.FC = () => {
 
     try {
       console.log('🗑️ Deleting bot:', botToDelete.id, botToDelete.task_id);
-      
+
       // Stop the bot if it has a task_id (running bot)
       if (botToDelete.task_id) {
         try {
@@ -455,13 +455,27 @@ export const TradingBots: React.FC = () => {
         }
       }
 
-      // Add to hidden bots list so it won't show again after refresh
-      hideBot(String(botToDelete.id), botToDelete.task_id);
+      // For futures bots, call the backend API to delete
+      if (botToDelete.type === 'futures') {
+        await apiService.deleteFuturesBot(botToDelete.id);
 
-      // Delete from localStorage config
-      deleteBotConfig(String(botToDelete.id));
-      if (botToDelete.task_id) {
-        deleteBotConfig(botToDelete.task_id);
+        // Also cleanup local storage just in case
+        deleteBotConfig(String(botToDelete.id));
+        if (botToDelete.task_id) {
+          deleteBotConfig(botToDelete.task_id);
+        }
+
+        // We don't need to hide futures bots anymore as they are permanently deleted from backend
+      } else {
+        // For spot bots, keep the old behavior (hiding) until backend is ready
+        // Add to hidden bots list so it won't show again after refresh
+        hideBot(String(botToDelete.id), botToDelete.task_id);
+
+        // Delete from localStorage config
+        deleteBotConfig(String(botToDelete.id));
+        if (botToDelete.task_id) {
+          deleteBotConfig(botToDelete.task_id);
+        }
       }
 
       // Remove from local state immediately
@@ -472,7 +486,7 @@ export const TradingBots: React.FC = () => {
       setBotToDelete(null);
     } catch (error: any) {
       console.log('❌ Delete error:', error.response?.status, error.response?.data);
-      
+
       if (isAuthError(error)) {
         toast.error('Session expired. Please log in again.');
       } else {
