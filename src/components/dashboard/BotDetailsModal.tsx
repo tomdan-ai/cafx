@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Activity, 
-  Clock, 
-  DollarSign, 
-  AlertCircle, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Clock,
+  DollarSign,
+  AlertCircle,
   Settings,
   Zap,
   Target,
@@ -87,16 +87,20 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
   const loadBotConfig = () => {
     setLoading(true);
     const storedConfig = getBotConfig(bot.id) || getBotConfig(bot.task_id || '');
-    
+
     console.log('🔍 Loading bot config for:', bot.id, bot.task_id);
     console.log('📦 Stored config from localStorage:', storedConfig);
     console.log('🤖 Bot object:', bot);
-    
+
     if (storedConfig) {
       console.log('✅ Using stored config');
       console.log('  - mode:', storedConfig.mode);
       console.log('  - run_hours:', storedConfig.run_hours);
       console.log('  - api_response:', storedConfig.api_response);
+      // Merge meta from bot object if not in stored config, as it comes from fresh API call
+      if (!storedConfig.meta && (bot as any).meta) {
+        storedConfig.meta = (bot as any).meta;
+      }
       setConfig(storedConfig);
     } else {
       console.log('⚠️ No stored config found, using bot object');
@@ -108,6 +112,7 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
         exchange: bot.exchange,
         symbol: bot.pair,
         created_at: bot.created_at,
+        meta: (bot as any).meta,
         ...(bot as any).__raw
       });
     }
@@ -158,7 +163,7 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
   const getDuration = () => {
     console.log('⏱️ Getting duration:');
     console.log('  - config.run_hours:', config?.run_hours);
-    
+
     if (config?.run_hours) {
       return `${config.run_hours}h`;
     }
@@ -169,7 +174,7 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
   const getMode = () => {
     console.log('🎮 Getting mode:');
     console.log('  - config.mode:', config?.mode);
-    
+
     if (config?.mode) return config.mode;
     return 'manual';
   };
@@ -193,32 +198,29 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
               <div className="absolute top-0 right-0 w-40 h-40 bg-purple-500/30 rounded-full blur-3xl"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/30 rounded-full blur-3xl"></div>
             </div>
-            
+
             <div className="relative flex items-center justify-between gap-3">
               <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
                 <div className="relative flex-shrink-0">
-                  <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br ${
-                    bot.status === 'active' 
-                      ? 'from-green-500/30 to-emerald-500/20 border-green-500/40' 
-                      : 'from-gray-500/30 to-gray-600/20 border-gray-500/40'
-                  } border-2 flex items-center justify-center backdrop-blur-sm`}>
+                  <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br ${bot.status === 'active'
+                    ? 'from-green-500/30 to-emerald-500/20 border-green-500/40'
+                    : 'from-gray-500/30 to-gray-600/20 border-gray-500/40'
+                    } border-2 flex items-center justify-center backdrop-blur-sm`}>
                     <img src="/MERLIN.png" alt="Bot" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
                   </div>
-                  <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-gray-800 ${
-                    bot.status === 'active' ? 'bg-green-400 animate-pulse' : 'bg-gray-500'
-                  }`}></div>
+                  <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-gray-800 ${bot.status === 'active' ? 'bg-green-400 animate-pulse' : 'bg-gray-500'
+                    }`}></div>
                 </div>
-                
+
                 <div className="min-w-0 flex-1">
                   <h2 className="text-lg sm:text-xl font-bold text-white mb-1 truncate">
                     {config.name || config.symbol || bot.pair}
                   </h2>
                   <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${
-                      bot.type === 'futures' 
-                        ? 'bg-orange-500/30 text-orange-300 border border-orange-500/40' 
-                        : 'bg-blue-500/30 text-blue-300 border border-blue-500/40'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${bot.type === 'futures'
+                      ? 'bg-orange-500/30 text-orange-300 border border-orange-500/40'
+                      : 'bg-blue-500/30 text-blue-300 border border-blue-500/40'
+                      }`}>
                       {bot.type}
                     </span>
                     <span className="text-gray-400 text-xs flex items-center">
@@ -231,9 +233,8 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
 
               <div className="text-right flex-shrink-0">
                 <p className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-wide mb-1">P&L</p>
-                <div className={`text-xl sm:text-2xl font-bold flex items-center justify-end ${
-                  bot.profit_loss >= 0 ? 'text-green-400' : 'text-red-400'
-                }`}>
+                <div className={`text-xl sm:text-2xl font-bold flex items-center justify-end ${bot.profit_loss >= 0 ? 'text-green-400' : 'text-red-400'
+                  }`}>
                   {bot.profit_loss >= 0 ? <ArrowUpRight className="w-5 h-5 mr-0.5" /> : <ArrowDownRight className="w-5 h-5 mr-0.5" />}
                   {bot.profit_loss >= 0 ? '+' : ''}${Math.abs(bot.profit_loss).toFixed(2)}
                 </div>
@@ -289,11 +290,10 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
                 </div>
               )}
               {config.strategy_type && (
-                <div className={`bg-gradient-to-br rounded-xl p-3 sm:p-4 border backdrop-blur-sm ${
-                  config.strategy_type === 'long' 
-                    ? 'from-green-500/20 to-emerald-500/10 border-green-500/30' 
-                    : 'from-red-500/20 to-pink-500/10 border-red-500/30'
-                }`}>
+                <div className={`bg-gradient-to-br rounded-xl p-3 sm:p-4 border backdrop-blur-sm ${config.strategy_type === 'long'
+                  ? 'from-green-500/20 to-emerald-500/10 border-green-500/30'
+                  : 'from-red-500/20 to-pink-500/10 border-red-500/30'
+                  }`}>
                   <div className="flex items-center space-x-2 mb-1.5">
                     {config.strategy_type === 'long' ? <TrendingUp className="w-3.5 h-3.5 text-green-400" /> : <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
                     <span className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-wider font-medium">Strategy</span>
@@ -303,6 +303,109 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
                   </p>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Meta Grid Configuration - Visual Ladder */}
+          {config.meta && config.meta.length > 0 && config.meta[0].grid_levels && (
+            <div className="bg-gray-800/60 rounded-xl p-5 border border-gray-700/50 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-2">
+                  <div className="p-1.5 bg-indigo-500/20 rounded-lg">
+                    <Layers className="w-3.5 h-3.5 text-indigo-400" />
+                  </div>
+                  <h3 className="text-xs sm:text-sm font-semibold text-white">Grid Layout</h3>
+                </div>
+                <div className="flex items-center space-x-3 text-[10px] text-gray-400">
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                    <span>Sell Zone</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                    <span>Buy Zone</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex space-x-6 h-64">
+                {/* Visual Ladder */}
+                <div className="relative flex-1 bg-gray-900/50 rounded-lg border border-gray-700/50 mx-2">
+                  {/* Grid Lines */}
+                  {config.meta[0].grid_levels.map((level: number, index: number) => {
+                    // Calculate position percentage (0% at bottom, 100% at top)
+                    const min = Number(config.lower_price || config.meta[0].lower_price);
+                    const max = Number(config.upper_price || config.meta[0].upper_price);
+                    const range = max - min;
+                    const pct = ((level - min) / range) * 100;
+
+                    // Color gradient logic based on position
+                    const isHigh = pct > 50;
+
+                    return (
+                      <div
+                        key={index}
+                        className="absolute w-full group"
+                        style={{ bottom: `${pct}%` }}
+                      >
+                        <div className={`h-[1px] w-full transition-all duration-300 ${isHigh
+                          ? 'bg-red-500/30 group-hover:bg-red-400 group-hover:h-[2px] group-hover:shadow-[0_0_8px_rgba(248,113,113,0.5)]'
+                          : 'bg-green-500/30 group-hover:bg-green-400 group-hover:h-[2px] group-hover:shadow-[0_0_8px_rgba(74,222,128,0.5)]'
+                          }`}></div>
+
+                        {/* Tooltipish Price Label */}
+                        <div className="absolute right-0 translate-x-full pr-2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none pl-2">
+                          <div className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${isHigh ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'
+                            }`}>
+                            {formatPrice(level)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Range Boundaries */}
+                  <div className="absolute -left-3 top-0 -translate-y-1/2 flex items-center">
+                    <span className="text-[10px] bg-gray-700/50 px-1.5 py-0.5 rounded text-gray-300 font-mono">
+                      {formatPrice(config.upper_price || config.meta[0].upper_price)}
+                    </span>
+                    <div className="w-3 border-t border-dashed border-gray-600 ml-1"></div>
+                  </div>
+                  <div className="absolute -left-3 bottom-0 translate-y-1/2 flex items-center">
+                    <span className="text-[10px] bg-gray-700/50 px-1.5 py-0.5 rounded text-gray-300 font-mono">
+                      {formatPrice(config.lower_price || config.meta[0].lower_price)}
+                    </span>
+                    <div className="w-3 border-t border-dashed border-gray-600 ml-1"></div>
+                  </div>
+                </div>
+
+                {/* Stats / Legend Side */}
+                <div className="w-32 flex flex-col justify-between py-2 text-xs">
+                  <div>
+                    <p className="text-gray-500 mb-1">Grid Density</p>
+                    <p className="text-white font-medium">{config.meta[0].grid_levels.length} Levels</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-gray-500 mb-1">Upper Limit</p>
+                      <p className="text-red-400 font-mono">{formatPrice(config.upper_price || config.meta[0].upper_price)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 mb-1">Avg Spread</p>
+                      <p className="text-indigo-400 font-mono">
+                        {config.grid_size
+                          ? `${((Number(config.upper_price || config.meta[0].upper_price) - Number(config.lower_price || config.meta[0].lower_price)) / Number(config.grid_size)).toFixed(2)}`
+                          : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 mb-1">Lower Limit</p>
+                      <p className="text-green-400 font-mono">{formatPrice(config.lower_price || config.meta[0].lower_price)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -363,20 +466,7 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
             )}
           </div>
 
-          {/* Status Alert */}
-          {bot.status === 'inactive' && (
-            <div className="bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 rounded-xl p-3">
-              <div className="flex items-center space-x-3">
-                <div className="p-1.5 bg-amber-500/20 rounded-lg flex-shrink-0">
-                  <AlertCircle className="w-4 h-4 text-amber-400" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-amber-300">Bot Inactive</p>
-                  <p className="text-[10px] text-amber-200/70">Completed or stopped. Delete to clean up.</p>
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {/* No Config Warning */}
           {!config.mode && !config.grid_size && !config.api_response && (
