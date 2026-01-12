@@ -117,7 +117,8 @@ export const apiService = {
       profit_loss: bot.profit_loss || 0,
       status: bot.is_running ? 'running' : 'stopped',
       created_at: bot.date_created,
-      updated_at: bot.date_updated
+      updated_at: bot.date_updated,
+      meta: bot.meta
     }));
 
     const spotBots = (response.data.spot || []).map((bot: any) => ({
@@ -127,7 +128,8 @@ export const apiService = {
       profit_loss: bot.profit_loss || 0,
       status: bot.is_running ? 'running' : 'stopped',
       created_at: bot.date_created,
-      updated_at: bot.date_updated
+      updated_at: bot.date_updated,
+      meta: bot.meta
     }));
 
     return { futures: futuresBots, spot: spotBots };
@@ -180,8 +182,17 @@ export const apiService = {
     if (config.strategy_type) payload.strategy_type = config.strategy_type;
     if (config.run_hours !== undefined) payload.run_hours = Number(config.run_hours);
 
+    if (config.run_hours !== undefined) payload.run_hours = Number(config.run_hours);
+
+    console.log('🚀 Sending startFuturesBot payload:', JSON.stringify(payload, null, 2));
     const response = await api.post('/api/futures/start-bot', payload);
-    console.log('🚀 startFuturesBot API response:', response.data);
+    console.log('🚀 startFuturesBot FULL response:', response);
+    console.log('🚀 startFuturesBot response.data:', response.data);
+    if (response.data?.meta) {
+      console.log('📦 Found META object:', response.data.meta);
+    } else {
+      console.log('⚠️ No META object found in response.data');
+    }
     return response.data;
   },
 
@@ -234,9 +245,18 @@ export const apiService = {
     if (config.lower_price !== undefined) payload.lower_price = Number(config.lower_price);
     if (config.run_hours !== undefined) payload.run_hours = Number(config.run_hours);
 
+    if (config.run_hours !== undefined) payload.run_hours = Number(config.run_hours);
+
+    console.log('🚀 Sending startSpotBot payload:', JSON.stringify(payload, null, 2));
     // Use correct spot endpoint (with trailing slash for Django)
     const response = await api.post('/api/spot/start-spot/', payload);
-    console.log('🚀 startSpotBot API response:', response.data);
+    console.log('🚀 startSpotBot FULL response:', response);
+    console.log('🚀 startSpotBot response.data:', response.data);
+    if (response.data?.meta) {
+      console.log('📦 Found META object:', response.data.meta);
+    } else {
+      console.log('⚠️ No META object found in response.data');
+    }
     return response.data;
   },
 
@@ -256,9 +276,11 @@ export const apiService = {
     return response.data;
   },
 
-  deleteSpotBot: async (botId: number) => {
-    console.log('🗑️ Deleting spot bot:', botId);
-    const response = await api.delete(`/api/spot/bots/${botId}`);
+  deleteSpotBot: async (taskId: string) => {
+    console.log('🗑️ Deleting spot bot:', taskId);
+    const response = await api.delete('/api/spot/delete-spot/', {
+      data: { task_id: taskId }
+    });
     console.log('✅ Delete spot bot response:', response.data);
     return response.data;
   },
