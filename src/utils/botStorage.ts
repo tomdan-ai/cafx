@@ -17,6 +17,7 @@ interface BotConfig {
   strategy_type?: string;
   created_at: string;
   api_response?: any; // Store complete API response for additional details
+  meta?: any[];
 }
 
 const STORAGE_KEY = 'bot_configurations';
@@ -54,9 +55,9 @@ export function getBotConfig(botId: string | number): BotConfig | null {
     const idStr = String(botId);
     console.log('🔎 getBotConfig searching for:', idStr);
     console.log('📚 All stored configs:', configs.map(c => ({ bot_id: c.bot_id, task_id: c.task_id })));
-    
-    const found = configs.find(c => 
-      String(c.bot_id) === idStr || 
+
+    const found = configs.find(c =>
+      String(c.bot_id) === idStr ||
       String(c.task_id) === idStr
     );
     console.log('🎯 Found config:', found ? 'YES' : 'NO');
@@ -135,8 +136,8 @@ export function getHiddenBots(): HiddenBot[] {
 // Check if a bot is hidden
 export function isBotHidden(botId: string, taskId?: string): boolean {
   const hidden = getHiddenBots();
-  return hidden.some(h => 
-    h.id === botId || 
+  return hidden.some(h =>
+    h.id === botId ||
     (taskId && h.task_id === taskId) ||
     (h.task_id && h.task_id === botId)
   );
