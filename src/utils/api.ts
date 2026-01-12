@@ -248,9 +248,10 @@ export const apiService = {
   },
 
   // Delete bot functions
-  deleteFuturesBot: async (botId: number) => {
+  deleteFuturesBot: async (botId: number | string) => {
     console.log('🗑️ Deleting futures bot:', botId);
-    const response = await api.delete(`/api/futures/bots/${botId}`);
+    // Use the specific endpoint for deleting futures bots as requested
+    const response = await api.delete(`/api/futures/delete-bot/${botId}/`);
     console.log('✅ Delete futures bot response:', response.data);
     return response.data;
   },
