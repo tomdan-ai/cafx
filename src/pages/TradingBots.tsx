@@ -92,6 +92,7 @@ export const TradingBots: React.FC = () => {
     profit_loss: bot.profit_loss ?? bot.profit ?? 0,
     created_at: bot.date_created || bot.created_at || bot.created || new Date().toISOString(),
     task_id: bot.task_id || bot.taskId || bot.task || undefined,
+    meta: bot.meta || [], // Store meta data
     __raw: bot
   });
 
@@ -100,17 +101,20 @@ export const TradingBots: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch only the authenticated user's bots using the spot/futures endpoints
-        const [spotBotsResponse, futuresBotsResponse, supportedExchangesResponse, pairsResponse, runHoursResponse] = await Promise.all([
-          apiService.getSpotBots(),
-          apiService.getFuturesBots(),
+        // Fetch only the authenticated user's bots using the unified endpoint
+        const [botsResponse, supportedExchangesResponse, pairsResponse, runHoursResponse] = await Promise.all([
+          apiService.getAllBots(), // Use unified endpoint which returns { futures: [], spot: [] }
           apiService.getExchanges(),
           apiService.getPairs(),
           apiService.getBotRunHours()
         ]);
 
-        const futuresBots = Array.isArray(futuresBotsResponse) ? futuresBotsResponse.map((b: any) => normalizeBot(b, 'futures')) : [];
-        const spotBots = Array.isArray(spotBotsResponse) ? spotBotsResponse.map((b: any) => normalizeBot(b, 'spot')) : [];
+        const futuresBots = Array.isArray(botsResponse.futures)
+          ? botsResponse.futures.map((b: any) => normalizeBot(b, 'futures'))
+          : [];
+        const spotBots = Array.isArray(botsResponse.spot)
+          ? botsResponse.spot.map((b: any) => normalizeBot(b, 'spot'))
+          : [];
 
         // Clean up old hidden bots periodically
         cleanupHiddenBots();
@@ -247,6 +251,8 @@ export const TradingBots: React.FC = () => {
           // Strategy type is auto-decided by the bot based on market analysis
         }
       }
+
+      console.log('🛠️ handleCreateBot - Prepared botConfig:', botConfig);
 
       if (botForm.type === 'futures') {
         const response = await apiService.startFuturesBot(botConfig);
@@ -467,11 +473,15 @@ export const TradingBots: React.FC = () => {
 
         // We don't need to hide futures bots anymore as they are permanently deleted from backend
       } else {
-        // For spot bots, keep the old behavior (hiding) until backend is ready
-        // Add to hidden bots list so it won't show again after refresh
-        hideBot(String(botToDelete.id), botToDelete.task_id);
+        // For spot bots, call the backend API to delete if we have a task_id
+        if (botToDelete.task_id) {
+          await apiService.deleteSpotBot(botToDelete.task_id);
+        } else {
+          // If no task_id (e.g. old bot or error state), just hide it
+          hideBot(String(botToDelete.id), botToDelete.task_id);
+        }
 
-        // Delete from localStorage config
+        // Always cleanup local storage
         deleteBotConfig(String(botToDelete.id));
         if (botToDelete.task_id) {
           deleteBotConfig(botToDelete.task_id);
