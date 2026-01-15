@@ -61,11 +61,11 @@ export const Dashboard: React.FC = () => {
         __raw: bot
       });
 
-      const futuresBots = Array.isArray(futuresBotsResponse) 
-        ? futuresBotsResponse.map((b: any) => normalizeBot(b, 'futures')) 
+      const futuresBots = Array.isArray(futuresBotsResponse)
+        ? futuresBotsResponse.map((b: any) => normalizeBot(b, 'futures'))
         : [];
-      const spotBots = Array.isArray(spotBotsResponse) 
-        ? spotBotsResponse.map((b: any) => normalizeBot(b, 'spot')) 
+      const spotBots = Array.isArray(spotBotsResponse)
+        ? spotBotsResponse.map((b: any) => normalizeBot(b, 'spot'))
         : [];
 
       const allBots = [...futuresBots, ...spotBots];
@@ -82,10 +82,10 @@ export const Dashboard: React.FC = () => {
       const connectedCount = (connectedExchangesData as any).count ?? exchangesArray.filter((ex: any) => ex?.connected).length;
 
       // Calculate totals - filter by is_running field
-      const activeBotsData = allBots.filter((bot: any) => bot.is_running === true);
+      const activeBotsData = allBots.filter((bot: any) => !!bot.is_running);
       const runningFuturesBots = activeBotsData.filter((bot: any) => bot.type === 'futures');
       const runningSpotBots = activeBotsData.filter((bot: any) => bot.type === 'spot');
-      
+
       // Store active bots in state for rendering
       setActiveBots(activeBotsData);
 
@@ -114,7 +114,7 @@ export const Dashboard: React.FC = () => {
       }
 
     } catch (error) {
-      
+
       // Set default stats if API fails
       const defaultStats: DashboardStatsType = {
         active_bots: 0,
@@ -195,11 +195,11 @@ export const Dashboard: React.FC = () => {
             Welcome back, {user?.username}!
           </h1>
           <p className="text-gray-400 mt-1 text-sm sm:text-base">
-             Here's an overview of <b>MERLIN'S</b>  Trading Performance
+            Here's an overview of <b>MERLIN'S</b>  Trading Performance
           </p>
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={handleRefresh}
           loading={refreshing}
           disabled={refreshing}
@@ -228,10 +228,10 @@ export const Dashboard: React.FC = () => {
               {activeBots.slice(0, 5).map((bot: any, index: number) => {
                 const displayProfit = bot.profit_loss || 0;
                 const isPositive = displayProfit >= 0;
-                
+
                 return (
-                  <div 
-                    key={bot.id || index} 
+                  <div
+                    key={bot.id || index}
                     className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-purple-500/50 transition-all cursor-pointer"
                     onClick={() => navigate('/trading-bots')}
                   >
@@ -250,9 +250,8 @@ export const Dashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`font-medium ${
-                        isPositive ? 'text-green-400' : 'text-red-400'
-                      }`}>
+                      <div className={`font-medium ${isPositive ? 'text-green-400' : 'text-red-400'
+                        }`}>
                         {isPositive ? '+' : ''}${displayProfit.toFixed(2)}
                       </div>
                       <div className="text-xs text-gray-400">P&L</div>
@@ -263,9 +262,9 @@ export const Dashboard: React.FC = () => {
             </div>
             {stats.active_bots > 5 && (
               <div className="text-center pt-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => navigate('/trading-bots')}
                   className="text-purple-400 border-purple-400 hover:bg-purple-400 hover:text-white"
                 >
@@ -281,7 +280,7 @@ export const Dashboard: React.FC = () => {
               <p>No active trades running</p>
               <p className="text-sm mt-1">Start a trading bot to see your active trades here</p>
             </div>
-            <Button 
+            <Button
               onClick={() => navigate('/trading-bots')}
               className="bg-purple-600 hover:bg-purple-700 text-white"
             >
@@ -306,7 +305,7 @@ export const Dashboard: React.FC = () => {
             <span className="text-base sm:text-lg font-medium">Create Bot</span>
             <span className="text-xs sm:text-sm opacity-80 mt-1">Start automated trading</span>
           </Button>
-          
+
           <Button
             variant="outline"
             size="lg"
