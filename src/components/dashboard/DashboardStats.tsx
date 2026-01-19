@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { 
-  TrendingUp, 
-  Bot, 
-  Link as LinkIcon, 
-  Crown, 
-  Activity, 
-  BarChart3, 
+import {
+  TrendingUp,
+  Bot,
+  Link as LinkIcon,
+  Crown,
+  Activity,
+  BarChart3,
   DollarSign,
   AlertCircle,
   RefreshCw,
@@ -31,19 +31,19 @@ interface StatsCardProps {
   className?: string;
 }
 
-const StatsCard: React.FC<StatsCardProps> = ({ 
-  title, 
-  value, 
-  subtitle, 
-  icon, 
-  trend, 
-  loading, 
+const StatsCard: React.FC<StatsCardProps> = ({
+  title,
+  value,
+  subtitle,
+  icon,
+  trend,
+  loading,
   onClick,
   className = ""
 }) => (
-  <Card 
-    hover 
-    glow 
+  <Card
+    hover
+    glow
     className={`group cursor-pointer transition-all duration-300 hover:scale-105 ${className}`}
     onClick={onClick}
   >
@@ -59,9 +59,8 @@ const StatsCard: React.FC<StatsCardProps> = ({
           <p className="text-xs text-gray-500">{subtitle}</p>
         )}
         {trend && (
-          <div className={`flex items-center mt-2 text-xs sm:text-sm ${
-            trend.positive ? 'text-green-400' : 'text-red-400'
-          }`}>
+          <div className={`flex items-center mt-2 text-xs sm:text-sm ${trend.positive ? 'text-green-400' : 'text-red-400'
+            }`}>
             {trend.positive ? (
               <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
             ) : (
@@ -71,9 +70,8 @@ const StatsCard: React.FC<StatsCardProps> = ({
           </div>
         )}
       </div>
-      <div className={`p-2 sm:p-3 rounded-lg transition-colors ${
-        loading ? 'bg-gray-700 animate-pulse' : 'bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20'
-      }`}>
+      <div className={`p-2 sm:p-3 rounded-lg transition-colors ${loading ? 'bg-gray-700 animate-pulse' : 'bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20'
+        }`}>
         {icon}
       </div>
     </div>
@@ -128,12 +126,12 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
 
   const statsCards = [
     {
-      title: 'Active Bots',
-      value: stats.active_bots.toString(),
-      subtitle: `${stats.total_bots} total bots`,
-      icon: <img src="/MERLIN.png" alt="Active Bots" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />,
+      title: 'Total Bots',
+      value: stats.total_bots.toString(),
+      subtitle: `${stats.active_bots} active bots`,
+      icon: <img src="/MERLIN.png" alt="Total Bots" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />,
       onClick: () => navigate('/bots'),
-      trend: stats.active_bots > 0 ? {
+      trend: stats.total_bots > 0 ? {
         value: `${Math.round((stats.active_bots / Math.max(stats.total_bots, 1)) * 100)}% active`,
         positive: stats.active_bots > 0
       } : undefined
@@ -182,10 +180,10 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
                 <span className="text-lg sm:text-xl font-bold text-white">{stats.running_futures_bots}</span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2">
-                <div 
+                <div
                   className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
-                  style={{ 
-                    width: `${stats.total_bots > 0 ? (stats.running_futures_bots / stats.total_bots) * 100 : 0}%` 
+                  style={{
+                    width: `${stats.total_bots > 0 ? (stats.running_futures_bots / stats.total_bots) * 100 : 0}%`
                   }}
                 />
               </div>
@@ -206,10 +204,10 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
                 <span className="text-lg sm:text-xl font-bold text-white">{stats.running_spot_bots}</span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2">
-                <div 
+                <div
                   className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-500"
-                  style={{ 
-                    width: `${stats.total_bots > 0 ? (stats.running_spot_bots / stats.total_bots) * 100 : 0}%` 
+                  style={{
+                    width: `${stats.total_bots > 0 ? (stats.running_spot_bots / stats.total_bots) * 100 : 0}%`
                   }}
                 />
               </div>
