@@ -279,7 +279,7 @@ export const apiService = {
   deleteSpotBot: async (taskId: string) => {
     console.log('🗑️ Deleting spot bot:', taskId);
     // Use DELETE method with data payload
-    const response = await api.delete('/api/spot/delete-spot/', { data: { task_id: taskId } });
+    const response = await api.delete('/api/spot/delete-spot', { data: { task_id: taskId } });
     console.log('✅ Delete spot bot response:', response.data);
     return response.data;
   },
