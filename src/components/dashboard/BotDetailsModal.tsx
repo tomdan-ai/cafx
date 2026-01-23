@@ -306,108 +306,131 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
             </div>
           )}
 
-          {/* Meta Grid Configuration - Visual Ladder */}
-          {config.meta && config.meta.length > 0 && config.meta[0].grid_levels && (
-            <div className="bg-gray-800/60 rounded-xl p-5 border border-gray-700/50 backdrop-blur-sm">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-2">
-                  <div className="p-1.5 bg-indigo-500/20 rounded-lg">
-                    <Layers className="w-3.5 h-3.5 text-indigo-400" />
+          {/* Meta Grid Configuration - Visual Ladder & Details */}
+          {(() => {
+            const metaData = Array.isArray(config.meta) ? config.meta[0] : config.meta;
+            const grid_levels = metaData?.grid_levels || metaData?.levels || [];
+            if (!grid_levels || grid_levels.length === 0) return null;
+
+            return (
+              <div className="bg-gray-800/60 rounded-xl p-4 sm:p-5 border border-gray-700/50 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-1.5 bg-indigo-500/20 rounded-lg">
+                      <Layers className="w-3.5 h-3.5 text-indigo-400" />
+                    </div>
+                    <h3 className="text-xs sm:text-sm font-semibold text-white">Grid Inventory</h3>
                   </div>
-                  <h3 className="text-xs sm:text-sm font-semibold text-white">Grid Layout</h3>
+                  <div className="flex items-center space-x-3 text-[10px] text-gray-400">
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                      <span>Sell</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                      <span>Buy</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-3 text-[10px] text-gray-400">
-                  <div className="flex items-center space-x-1">
-                    <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                    <span>Sell Zone</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                    <span>Buy Zone</span>
-                  </div>
-                </div>
-              </div>
 
-              <div className="flex space-x-6 h-64">
-                {/* Visual Ladder */}
-                <div className="relative flex-1 bg-gray-900/50 rounded-lg border border-gray-700/50 mx-2">
-                  {/* Grid Lines */}
-                  {config.meta[0].grid_levels.map((level: number, index: number) => {
-                    // Calculate position percentage (0% at bottom, 100% at top)
-                    const min = Number(config.lower_price || config.meta[0].lower_price);
-                    const max = Number(config.upper_price || config.meta[0].upper_price);
-                    const range = max - min;
-                    const pct = ((level - min) / range) * 100;
+                <div className="flex flex-col md:flex-row gap-6">
+                  {/* Visual Ladder */}
+                  <div className="flex-1 space-y-4">
+                    <div className="relative h-48 bg-gray-900/50 rounded-lg border border-gray-700/50 mx-2">
+                      {/* Grid Lines */}
+                      {grid_levels.map((level: number, index: number) => {
+                        const min = Number(config.lower_price || metaData.lower_price);
+                        const max = Number(config.upper_price || metaData.upper_price);
+                        const range = max - min;
+                        const pct = range > 0 ? ((level - min) / range) * 100 : 50;
 
-                    // Color gradient logic based on position
-                    const isHigh = pct > 50;
+                        const isHigh = pct > 50;
 
-                    return (
-                      <div
-                        key={index}
-                        className="absolute w-full group"
-                        style={{ bottom: `${pct}%` }}
-                      >
-                        <div className={`h-[1px] w-full transition-all duration-300 ${isHigh
-                          ? 'bg-red-500/30 group-hover:bg-red-400 group-hover:h-[2px] group-hover:shadow-[0_0_8px_rgba(248,113,113,0.5)]'
-                          : 'bg-green-500/30 group-hover:bg-green-400 group-hover:h-[2px] group-hover:shadow-[0_0_8px_rgba(74,222,128,0.5)]'
-                          }`}></div>
-
-                        {/* Tooltipish Price Label */}
-                        <div className="absolute right-0 translate-x-full pr-2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none pl-2">
-                          <div className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${isHigh ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'
-                            }`}>
-                            {formatPrice(level)}
+                        return (
+                          <div
+                            key={index}
+                            className="absolute w-full group"
+                            style={{ bottom: `${Math.max(0, Math.min(100, pct))}%` }}
+                          >
+                            <div className={`h-[1px] w-full transition-all duration-300 ${isHigh
+                              ? 'bg-red-500/30 group-hover:bg-red-400 group-hover:h-[2px]'
+                              : 'bg-green-500/30 group-hover:bg-green-400 group-hover:h-[2px]'
+                              }`}></div>
                           </div>
-                        </div>
+                        );
+                      })}
+
+                      {/* Range Boundaries */}
+                      <div className="absolute -left-2 top-0 -translate-y-1/2 flex items-center">
+                        <span className="text-[10px] bg-gray-800 px-1.5 py-0.5 rounded text-gray-400 font-mono">
+                          {formatPrice(config.upper_price || metaData.upper_price)}
+                        </span>
                       </div>
-                    );
-                  })}
-
-                  {/* Range Boundaries */}
-                  <div className="absolute -left-3 top-0 -translate-y-1/2 flex items-center">
-                    <span className="text-[10px] bg-gray-700/50 px-1.5 py-0.5 rounded text-gray-300 font-mono">
-                      {formatPrice(config.upper_price || config.meta[0].upper_price)}
-                    </span>
-                    <div className="w-3 border-t border-dashed border-gray-600 ml-1"></div>
-                  </div>
-                  <div className="absolute -left-3 bottom-0 translate-y-1/2 flex items-center">
-                    <span className="text-[10px] bg-gray-700/50 px-1.5 py-0.5 rounded text-gray-300 font-mono">
-                      {formatPrice(config.lower_price || config.meta[0].lower_price)}
-                    </span>
-                    <div className="w-3 border-t border-dashed border-gray-600 ml-1"></div>
-                  </div>
-                </div>
-
-                {/* Stats / Legend Side */}
-                <div className="w-32 flex flex-col justify-between py-2 text-xs">
-                  <div>
-                    <p className="text-gray-500 mb-1">Grid Density</p>
-                    <p className="text-white font-medium">{config.meta[0].grid_levels.length} Levels</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-gray-500 mb-1">Upper Limit</p>
-                      <p className="text-red-400 font-mono">{formatPrice(config.upper_price || config.meta[0].upper_price)}</p>
+                      <div className="absolute -left-2 bottom-0 translate-y-1/2 flex items-center">
+                        <span className="text-[10px] bg-gray-800 px-1.5 py-0.5 rounded text-gray-400 font-mono">
+                          {formatPrice(config.lower_price || metaData.lower_price)}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-gray-500 mb-1">Avg Spread</p>
-                      <p className="text-indigo-400 font-mono">
-                        {config.grid_size
-                          ? `${((Number(config.upper_price || config.meta[0].upper_price) - Number(config.lower_price || config.meta[0].lower_price)) / Number(config.grid_size)).toFixed(2)}`
-                          : '—'}
-                      </p>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-gray-900/40 rounded-lg border border-gray-700/50">
+                        <p className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Levels</p>
+                        <p className="text-sm font-bold text-white">{grid_levels.length}</p>
+                      </div>
+                      <div className="p-3 bg-gray-900/40 rounded-lg border border-gray-700/50">
+                        <p className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Spacing</p>
+                        <p className="text-sm font-bold text-indigo-400">
+                          {config.grid_size
+                            ? `${((Number(config.upper_price || metaData.upper_price) - Number(config.lower_price || metaData.lower_price)) / Number(config.grid_size)).toFixed(2)}`
+                            : '—'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-gray-500 mb-1">Lower Limit</p>
-                      <p className="text-green-400 font-mono">{formatPrice(config.lower_price || config.meta[0].lower_price)}</p>
+                  </div>
+
+                  {/* Detailed Order List */}
+                  <div className="w-full md:w-64">
+                    <div className="h-64 overflow-y-auto pr-2 custom-scrollbar">
+                      <div className="space-y-1">
+                        {[...grid_levels].sort((a, b) => b - a).map((level, idx) => {
+                          const min = Number(config.lower_price || metaData.lower_price);
+                          const max = Number(config.upper_price || metaData.upper_price);
+                          const range = max - min;
+                          const pct = range > 0 ? ((level - min) / range) * 100 : 50;
+                          const isSell = pct > 50;
+
+                          // Try to get size from meta if available
+                          const size = metaData.grid_sizes?.[idx] ||
+                            metaData.sizes?.[idx] ||
+                            (config.investment_amount && config.grid_size ? (Number(config.investment_amount) / Number(config.grid_size)).toFixed(4) : null);
+
+                          return (
+                            <div
+                              key={idx}
+                              className={`flex items-center justify-between p-2 rounded-lg border ${isSell ? 'bg-red-500/5 border-red-500/10' : 'bg-green-500/5 border-green-500/10'
+                                } group hover:bg-white/5 transition-colors`}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <div className={`w-1.5 h-1.5 rounded-full ${isSell ? 'bg-red-400' : 'bg-green-400'}`}></div>
+                                <span className="text-xs font-mono text-gray-300">{formatPrice(level)}</span>
+                              </div>
+                              {size && (
+                                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${isSell ? 'bg-red-500/10 text-red-300' : 'bg-green-500/10 text-green-300'
+                                  }`}>
+                                  {size}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* API Response Details */}
           {config.api_response && (
