@@ -463,7 +463,12 @@ export const TradingBots: React.FC = () => {
 
       // For futures bots, call the backend API to delete
       if (botToDelete.type === 'futures') {
-        await apiService.deleteFuturesBot(botToDelete.id);
+        if (!botToDelete.task_id) {
+          toast.error('Cannot delete: Missing task ID');
+          return;
+        }
+
+        await apiService.deleteFuturesBot(botToDelete.task_id);
 
         // Also cleanup local storage just in case
         deleteBotConfig(String(botToDelete.id));

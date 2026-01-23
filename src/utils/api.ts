@@ -268,18 +268,18 @@ export const apiService = {
   },
 
   // Delete bot functions
-  deleteFuturesBot: async (botId: number | string) => {
-    console.log('🗑️ Deleting futures bot:', botId);
-    // Use DELETE method with data payload
-    const response = await api.delete('/api/futures/delete-bot/', { data: { task_id: botId } });
+  deleteFuturesBot: async (taskId: string) => {
+    console.log('🗑️ Deleting futures bot:', taskId);
+    // Use DELETE method with task_id in the body
+    const response = await api.delete('/api/futures/delete-bot/', { data: { task_id: taskId } });
     console.log('✅ Delete futures bot response:', response.data);
     return response.data;
   },
 
   deleteSpotBot: async (taskId: string) => {
     console.log('🗑️ Deleting spot bot:', taskId);
-    // Use DELETE method with data payload
-    const response = await api.delete('/api/spot/delete-spot', { data: { task_id: taskId } });
+    // Use DELETE method with task_id in the body
+    const response = await api.delete('/api/spot/delete-spot/', { data: { task_id: taskId } });
     console.log('✅ Delete spot bot response:', response.data);
     return response.data;
   },
