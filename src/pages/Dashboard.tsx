@@ -6,7 +6,7 @@ import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { apiService } from '../utils/api';
-import { Plus, BarChart3, RefreshCw } from 'lucide-react';
+import { Plus, BarChart3, RefreshCw, Bot, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, isAuthError, isServerError } from '../utils/errorUtils';
 
@@ -36,7 +36,6 @@ export const Dashboard: React.FC = () => {
         setLoading(true);
       }
 
-      // Fetch data from multiple endpoints - use the same endpoints as TradingBots page
       const [spotBotsResponse, futuresBotsResponse, connectedExchangesResponse, userProfile] = await Promise.all([
         apiService.getSpotBots(),
         apiService.getFuturesBots(),
@@ -44,7 +43,6 @@ export const Dashboard: React.FC = () => {
         apiService.getProfile().catch(() => null)
       ]);
 
-      // Normalize bot data - same logic as TradingBots page
       const normalizeBot = (bot: any, type: 'spot' | 'futures') => ({
         id: bot.id ?? bot.pk ?? bot._id ?? String(bot.task_id || bot.taskId || Math.random()),
         name: bot.name || bot.pair || `${type.toUpperCase()} Bot`,
@@ -70,7 +68,6 @@ export const Dashboard: React.FC = () => {
 
       const allBots = [...futuresBots, ...spotBots];
 
-      // Normalize connected exchanges response
       const connectedExchangesData = connectedExchangesResponse || {};
       let exchangesArray: any[] = [];
       if (Array.isArray(connectedExchangesResponse)) {
@@ -80,16 +77,12 @@ export const Dashboard: React.FC = () => {
       }
 
       const connectedCount = (connectedExchangesData as any).count ?? exchangesArray.filter((ex: any) => ex?.connected).length;
-
-      // Calculate totals - filter by is_running field
       const activeBotsData = allBots.filter((bot: any) => !!bot.is_running);
       const runningFuturesBots = activeBotsData.filter((bot: any) => bot.type === 'futures');
       const runningSpotBots = activeBotsData.filter((bot: any) => bot.type === 'spot');
 
-      // Store active bots in state for rendering
       setActiveBots(activeBotsData);
 
-      // Calculate total profit from real bot data
       const totalProfit = activeBotsData.reduce((total: number, bot: any) => {
         const profit = bot.profit_loss || 0;
         return total + profit;
@@ -110,12 +103,10 @@ export const Dashboard: React.FC = () => {
       setStats(dashboardStats);
 
       if (isRefresh) {
-        toast.success('Dashboard data refreshed!');
+        toast.success('Dashboard refreshed');
       }
 
     } catch (error) {
-
-      // Set default stats if API fails
       const defaultStats: DashboardStatsType = {
         active_bots: 0,
         total_profit: 0,
@@ -149,25 +140,10 @@ export const Dashboard: React.FC = () => {
     }
   }, [user]);
 
-  const handleCreateBot = () => {
-    navigate('/bots');
-  };
-
-  const handleViewAnalytics = () => {
-    navigate('/analytics');
-  };
-
-  const handleRefresh = () => {
-    fetchDashboardData(true);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="relative">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
-          <div className="absolute inset-0 rounded-full h-12 w-12 border-t-2 border-blue-500 animate-spin animation-delay-200"></div>
-        </div>
+        <div className="loader-premium" />
       </div>
     );
   }
@@ -187,26 +163,23 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 lg:space-y-8">
+    <div className="space-y-8 fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white">
-            Welcome back, {user?.username}!
+            Welcome back, {user?.username}
           </h1>
-          <p className="text-gray-400 mt-1 text-sm sm:text-base">
-            Here's an overview of <b>MERLIN'S</b>  Trading Performance
+          <p className="text-gray-500 mt-1">
+            Here's an overview of <span className="text-[var(--color-primary)] font-semibold">MERLIN's</span> Trading Performance
           </p>
         </div>
         <Button
-          variant="outline"
-          onClick={handleRefresh}
-          loading={refreshing}
+          variant="secondary"
+          onClick={() => fetchDashboardData(true)}
           disabled={refreshing}
-          size="sm"
-          className="self-start sm:self-auto"
         >
-          <RefreshCw className="w-4 h-4 mr-2" />
+          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
           {refreshing ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
@@ -214,110 +187,141 @@ export const Dashboard: React.FC = () => {
       {/* Stats */}
       <DashboardStats stats={stats} />
 
-      {/* Active Trades */}
-      <Card className="p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Active Trades</h2>
-        {stats.active_bots > 0 ? (
-          <div className="space-y-3">
-            {/* This would be populated with actual active bot data */}
-            <div className="text-sm text-gray-400 mb-3">
-              {stats.active_bots} active trading bot{stats.active_bots !== 1 ? 's' : ''} running
+      {/* Active Trades Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Active Trades */}
+        <div className="lg:col-span-2">
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-white">Active Trades</h2>
+              {stats.active_bots > 0 && (
+                <span className="badge badge-green">{stats.active_bots} Running</span>
+              )}
             </div>
-            <div className="grid gap-3">
-              {/* Display actual active bot data */}
-              {activeBots.slice(0, 5).map((bot: any, index: number) => {
-                const displayProfit = bot.profit_loss || 0;
-                const isPositive = displayProfit >= 0;
 
-                return (
-                  <div
-                    key={bot.id || index}
-                    className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-purple-500/50 transition-all cursor-pointer"
-                    onClick={() => navigate('/trading-bots')}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-2 h-2 rounded-full animate-pulse bg-green-400"></div>
-                      <div className="flex items-center space-x-2">
-                        <img src="/MERLIN.png" alt="Bot" className="w-6 h-6 object-contain" />
-                        <div>
-                          <div className="text-white font-medium">
-                            {bot.pair || bot.name || `${bot.exchange} Bot`}
+            {stats.active_bots > 0 ? (
+              <div className="space-y-3">
+                {activeBots.slice(0, 5).map((bot: any, index: number) => {
+                  const displayProfit = bot.profit_loss || 0;
+                  const isPositive = displayProfit >= 0;
+
+                  return (
+                    <div
+                      key={bot.id || index}
+                      className={`bot-card ${bot.status === 'active' ? 'bot-card-active' : 'bot-card-inactive'} cursor-pointer`}
+                      onClick={() => navigate('/bots')}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="status-dot status-dot-active" />
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-[var(--color-primary)]/10 flex items-center justify-center">
+                              <Bot className="w-4 h-4 text-[var(--color-primary)]" />
+                            </div>
+                            <div>
+                              <p className="text-white font-medium">
+                                {bot.pair || bot.name || `${bot.exchange} Bot`}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {bot.exchange} • <span className={bot.type === 'futures' ? 'text-yellow-400' : 'text-blue-400'}>{bot.type}</span>
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-400">
-                            {bot.exchange} • {bot.type === 'futures' ? 'Futures' : 'Spot'}
-                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-semibold ${isPositive ? 'pnl-positive' : 'pnl-negative'}`}>
+                            {isPositive ? '+' : ''}${displayProfit.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-gray-500">P&L</p>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className={`font-medium ${isPositive ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                        {isPositive ? '+' : ''}${displayProfit.toFixed(2)}
-                      </div>
-                      <div className="text-xs text-gray-400">P&L</div>
-                    </div>
+                  );
+                })}
+
+                {stats.active_bots > 5 && (
+                  <div className="text-center pt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/bots')}
+                    >
+                      View All {stats.active_bots} Active Bots
+                    </Button>
                   </div>
-                );
-              })}
-            </div>
-            {stats.active_bots > 5 && (
-              <div className="text-center pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/trading-bots')}
-                  className="text-purple-400 border-purple-400 hover:bg-purple-400 hover:text-white"
-                >
-                  View All {stats.active_bots} Active Bots
+                )}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <Bot className="w-8 h-8" />
+                </div>
+                <h3 className="empty-state-title">No Active Trades</h3>
+                <p className="empty-state-description">
+                  Start a trading bot to see your active trades here
+                </p>
+                <Button onClick={() => navigate('/bots?create=true')}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Start Trading Bot
                 </Button>
               </div>
             )}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <div className="text-gray-400 mb-4">
-              <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No active trades running</p>
-              <p className="text-sm mt-1">Start a trading bot to see your active trades here</p>
-            </div>
-            <Button
-              onClick={() => navigate('/trading-bots')}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Start Trading Bot
-            </Button>
-          </div>
-        )}
-      </Card>
-
-      {/* Quick Actions */}
-      <Card className="p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={handleCreateBot}
-            className="flex flex-col items-center p-4 sm:p-6 h-auto text-center"
-          >
-            <Plus className="w-6 h-6 sm:w-8 sm:h-8 mb-2" />
-            <span className="text-base sm:text-lg font-medium">Create Bot</span>
-            <span className="text-xs sm:text-sm opacity-80 mt-1">Start automated trading</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={handleViewAnalytics}
-            className="flex flex-col items-center p-4 sm:p-6 h-auto text-center"
-          >
-            <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 mb-2" />
-            <span className="text-base sm:text-lg font-medium">Analytics</span>
-            <span className="text-xs sm:text-sm opacity-80 mt-1">Track performance</span>
-          </Button>
+          </Card>
         </div>
-      </Card>
+
+        {/* Quick Actions */}
+        <div>
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
+            <div className="space-y-3">
+              <button
+                onClick={() => navigate('/bots?create=true')}
+                className="w-full p-4 rounded-xl bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)]/20 hover:border-[var(--color-primary)]/40 transition-all text-left group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--color-primary)]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Plus className="w-5 h-5 text-[var(--color-primary)]" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Create Bot</p>
+                    <p className="text-sm text-gray-500">Start automated trading</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate('/analytics')}
+                className="w-full p-4 rounded-xl bg-[var(--color-surface-light)] border border-[var(--color-border)] hover:border-[var(--color-border-light)] transition-all text-left group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--color-secondary)]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <BarChart3 className="w-5 h-5 text-[var(--color-secondary)]" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Analytics</p>
+                    <p className="text-sm text-gray-500">Track performance</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => navigate('/subscription')}
+                className="w-full p-4 rounded-xl bg-[var(--color-surface-light)] border border-[var(--color-border)] hover:border-[var(--color-border-light)] transition-all text-left group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--color-warning)]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <TrendingUp className="w-5 h-5 text-[var(--color-warning)]" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Upgrade Plan</p>
+                    <p className="text-sm text-gray-500">Unlock more features</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </Card>
+        </div>
+      </div>
 
       {/* Recent Activity */}
       <RecentActivity />

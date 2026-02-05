@@ -1,82 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
-import {
-  TrendingUp,
-  Bot,
-  Link as LinkIcon,
-  Crown,
-  Activity,
-  BarChart3,
-  DollarSign,
-  AlertCircle,
-  RefreshCw,
-  TrendingDown,
-  Zap
-} from 'lucide-react';
-import { apiService } from '../../utils/api';
-import { useNavigate, Link } from 'react-router-dom';
-
-interface StatsCardProps {
-  title: string;
-  value: string;
-  subtitle?: string;
-  icon: React.ReactNode;
-  trend?: {
-    value: string;
-    positive: boolean;
-  };
-  loading?: boolean;
-  onClick?: () => void;
-  className?: string;
-}
-
-const StatsCard: React.FC<StatsCardProps> = ({
-  title,
-  value,
-  subtitle,
-  icon,
-  trend,
-  loading,
-  onClick,
-  className = ""
-}) => (
-  <Card
-    hover
-    glow
-    className={`group cursor-pointer transition-all duration-300 hover:scale-105 ${className}`}
-    onClick={onClick}
-  >
-    <div className="flex items-center justify-between">
-      <div className="flex-1">
-        <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">{title}</p>
-        {loading ? (
-          <div className="h-6 sm:h-8 bg-gray-700 rounded animate-pulse mb-1" />
-        ) : (
-          <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1">{value}</p>
-        )}
-        {subtitle && (
-          <p className="text-xs text-gray-500">{subtitle}</p>
-        )}
-        {trend && (
-          <div className={`flex items-center mt-2 text-xs sm:text-sm ${trend.positive ? 'text-green-400' : 'text-red-400'
-            }`}>
-            {trend.positive ? (
-              <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-            ) : (
-              <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-            )}
-            {trend.value}
-          </div>
-        )}
-      </div>
-      <div className={`p-2 sm:p-3 rounded-lg transition-colors ${loading ? 'bg-gray-700 animate-pulse' : 'bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20'
-        }`}>
-        {icon}
-      </div>
-    </div>
-  </Card>
-);
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { TrendingUp, TrendingDown, DollarSign, Crown, Activity, Bot } from 'lucide-react';
 
 interface DashboardStatsType {
   active_bots: number;
@@ -104,145 +28,132 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
     }).format(amount);
   };
 
-  const getSubscriptionIcon = (tier: string) => {
-    switch (tier?.toLowerCase()) {
-      case 'premium':
-      case 'pro':
-        return <Crown className="w-5 h-5 sm:w-6 sm:h-6" />;
-      default:
-        return <Activity className="w-5 h-5 sm:w-6 sm:h-6" />;
-    }
-  };
-
-  const getSubscriptionColor = (tier: string) => {
-    switch (tier?.toLowerCase()) {
-      case 'premium':
-      case 'pro':
-        return 'from-yellow-500 to-orange-500';
-      default:
-        return 'from-blue-500 to-purple-500';
-    }
-  };
-
-  const statsCards = [
-    {
-      title: 'Total Bots',
-      value: stats.total_bots.toString(),
-      subtitle: `${stats.active_bots} active bots`,
-      icon: <img src="/MERLIN.png" alt="Total Bots" className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />,
-      onClick: () => navigate('/bots'),
-      trend: stats.total_bots > 0 ? {
-        value: `${Math.round((stats.active_bots / Math.max(stats.total_bots, 1)) * 100)}% active`,
-        positive: stats.active_bots > 0
-      } : undefined
-    },
-    {
-      title: 'Total Profit',
-      value: formatCurrency(stats.total_profit),
-      subtitle: 'All time earnings',
-      icon: <DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />,
-      onClick: () => navigate('/analytics'),
-      trend: {
-        value: stats.total_profit >= 0 ? '+12.5% this month' : '-5.2% this month',
-        positive: stats.total_profit >= 0
-      }
-    },
-    {
-      title: 'Subscription',
-      value: stats.subscription_tier.charAt(0).toUpperCase() + stats.subscription_tier.slice(1),
-      subtitle: 'Current plan',
-      icon: getSubscriptionIcon(stats.subscription_tier),
-      onClick: () => navigate('/subscription'),
-      className: `bg-gradient-to-br ${getSubscriptionColor(stats.subscription_tier)} border-0`
-    }
-  ];
+  const isProfitPositive = stats.total_profit >= 0;
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-6">
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-        {statsCards.map((card, index) => (
-          <StatsCard key={index} {...card} />
-        ))}
-      </div>
-
-      {/* Detailed Bot Stats */}
-      {stats.active_bots > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
-          <Card className="p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base sm:text-lg font-semibold text-white">Futures Bots</h3>
-              <img src="/MERLIN.png" alt="Futures Bots" className="w-5 h-5 object-contain" />
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-400">Active</span>
-                <span className="text-lg sm:text-xl font-bold text-white">{stats.running_futures_bots}</span>
-              </div>
-              <div className="w-full bg-gray-700 rounded-full h-2">
-                <div
-                  className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${stats.total_bots > 0 ? (stats.running_futures_bots / stats.total_bots) * 100 : 0}%`
-                  }}
-                />
-              </div>
-              <p className="text-xs text-gray-500">
-                {stats.total_bots > 0 ? Math.round((stats.running_futures_bots / stats.total_bots) * 100) : 0}% of total bots
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Active Bots */}
+        <div
+          className="stat-card stat-card-purple cursor-pointer"
+          onClick={() => navigate('/bots')}
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="stat-label">Active Bots</p>
+              <p className="stat-value">{stats.active_bots}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                of {stats.total_bots} total
               </p>
             </div>
-          </Card>
-
-          <Card className="p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base sm:text-lg font-semibold text-white">Spot Bots</h3>
-              <BarChart3 className="w-5 h-5 text-green-400" />
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-400">Active</span>
-                <span className="text-lg sm:text-xl font-bold text-white">{stats.running_spot_bots}</span>
-              </div>
-              <div className="w-full bg-gray-700 rounded-full h-2">
-                <div
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${stats.total_bots > 0 ? (stats.running_spot_bots / stats.total_bots) * 100 : 0}%`
-                  }}
-                />
-              </div>
-              <p className="text-xs text-gray-500">
-                {stats.total_bots > 0 ? Math.round((stats.running_spot_bots / stats.total_bots) * 100) : 0}% of total bots
-              </p>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {stats.active_bots === 0 && (
-        <Card className="p-6 sm:p-8 text-center">
-          <div className="max-w-md mx-auto">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-              <img src="/MERLIN.png" alt="No Bots" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
-            </div>
-            <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">No Active Bots</h3>
-            <p className="text-sm sm:text-base text-gray-400 mb-6">
-              Get started by creating your first trading bot.
-            </p>
-            <div className="flex justify-center">
-              <Button
-                variant="primary"
-                onClick={() => navigate('/bots')}
-                className="flex items-center justify-center"
-              >
-                <img src="/MERLIN.png" alt="Create Bot" className="w-4 h-4 mr-2 object-contain" />
-                Create Your First Bot
-              </Button>
+            <div className="stat-icon stat-icon-purple">
+              <Bot className="w-6 h-6" />
             </div>
           </div>
-        </Card>
-      )}
+          {stats.active_bots > 0 && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-[var(--color-accent)]">
+              <div className="status-dot status-dot-active" />
+              <span>{stats.running_futures_bots} futures, {stats.running_spot_bots} spot</span>
+            </div>
+          )}
+        </div>
+
+        {/* Total Profit */}
+        <div
+          className="stat-card stat-card-green cursor-pointer"
+          onClick={() => navigate('/analytics')}
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="stat-label">Total Profit</p>
+              <p className={`stat-value ${isProfitPositive ? 'pnl-positive' : 'pnl-negative'}`}>
+                {formatCurrency(stats.total_profit)}
+              </p>
+            </div>
+            <div className="stat-icon stat-icon-green">
+              <DollarSign className="w-6 h-6" />
+            </div>
+          </div>
+          <div className={`mt-4 flex items-center gap-1 text-sm ${isProfitPositive ? 'pnl-positive' : 'pnl-negative'}`}>
+            {isProfitPositive ? (
+              <TrendingUp className="w-4 h-4" />
+            ) : (
+              <TrendingDown className="w-4 h-4" />
+            )}
+            <span>All time earnings</span>
+          </div>
+        </div>
+
+        {/* Subscription */}
+        <div
+          className="stat-card stat-card-yellow cursor-pointer"
+          onClick={() => navigate('/subscription')}
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="stat-label">Subscription</p>
+              <p className="stat-value capitalize">{stats.subscription_tier}</p>
+            </div>
+            <div className="stat-icon stat-icon-yellow">
+              {stats.subscription_tier?.toLowerCase() === 'pro' || stats.subscription_tier?.toLowerCase() === 'premium' ? (
+                <Crown className="w-6 h-6" />
+              ) : (
+                <Activity className="w-6 h-6" />
+              )}
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="badge badge-yellow">Current Plan</span>
+          </div>
+        </div>
+
+        {/* Bot Performance Summary */}
+        <div className="stat-card stat-card-blue">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="stat-label">Bot Distribution</p>
+            </div>
+          </div>
+
+          {stats.total_bots > 0 ? (
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-400">Futures</span>
+                  <span className="text-white font-medium">{stats.running_futures_bots}</span>
+                </div>
+                <div className="w-full bg-[var(--color-surface-dark)] rounded-full h-1.5">
+                  <div
+                    className="bg-[var(--color-primary)] h-1.5 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${stats.total_bots > 0 ? (stats.running_futures_bots / stats.total_bots) * 100 : 0}%`
+                    }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-400">Spot</span>
+                  <span className="text-white font-medium">{stats.running_spot_bots}</span>
+                </div>
+                <div className="w-full bg-[var(--color-surface-dark)] rounded-full h-1.5">
+                  <div
+                    className="bg-[var(--color-secondary)] h-1.5 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${stats.total_bots > 0 ? (stats.running_spot_bots / stats.total_bots) * 100 : 0}%`
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-2">
+              <p className="text-gray-500 text-sm">No bots created yet</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
