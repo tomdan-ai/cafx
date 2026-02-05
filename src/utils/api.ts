@@ -30,7 +30,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/auth/login';
+      // Removed window.location redirect to allow React state to handle it
     }
     return Promise.reject(error);
   }
