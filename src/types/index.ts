@@ -41,6 +41,7 @@ export interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   needsVerification: boolean;
+  isInitializing: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, username: string, password: string, confirmPassword: string) => Promise<void>;
   verifyEmail: (email: string, otp_code: string) => Promise<void>;
