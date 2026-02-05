@@ -9,6 +9,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   refreshToken: null,
   isAuthenticated: false,
   needsVerification: false,
+  isInitializing: true,
 
   setUser: (user: User | null) => set({ user }),
 
@@ -231,6 +232,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   initialize: async () => {
+    set({ isInitializing: true });
     const token = localStorage.getItem('token');
     const refreshToken = localStorage.getItem('refreshToken');
     const userStr = localStorage.getItem('user');
@@ -313,5 +315,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         localStorage.removeItem('user');
       }
     }
+    set({ isInitializing: false });
   },
 }));
