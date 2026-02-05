@@ -14,7 +14,7 @@ import { Subscription } from './pages/Subscription';
 import { Analytics } from './pages/Analytics';
 
 function App() {
-  const { initialize, isAuthenticated, needsVerification, user } = useAuthStore();
+  const { initialize, isAuthenticated, needsVerification, user, isInitializing } = useAuthStore();
 
   useEffect(() => {
     initialize();
@@ -22,8 +22,16 @@ function App() {
 
   // Debug logging
   useEffect(() => {
-    console.log('App state:', { isAuthenticated, needsVerification, user: !!user });
-  }, [isAuthenticated, needsVerification, user]);
+    console.log('App state:', { isAuthenticated, needsVerification, isInitializing, user: !!user });
+  }, [isAuthenticated, needsVerification, isInitializing, user]);
+
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
 
   return (
     <Router>
