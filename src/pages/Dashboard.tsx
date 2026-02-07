@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { DashboardStats } from '../components/dashboard/DashboardStats';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
+import { PerformanceChart } from '../components/dashboard/PerformanceChart';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { apiService } from '../utils/api';
@@ -40,8 +41,15 @@ export const Dashboard: React.FC = () => {
         apiService.getSpotBots(),
         apiService.getFuturesBots(),
         apiService.getConnectedExchanges(),
-        apiService.getProfile().catch(() => null)
+        apiService.getProfile().catch((err) => {
+          console.error('Failed to fetch profile:', err);
+          return null;
+        })
       ]);
+
+      // Debug: Log profile response to see subscription tier
+      console.log('📦 Profile Response:', userProfile);
+      console.log('📦 Profile subscription_tier:', userProfile?.subscription_tier);
 
       const normalizeBot = (bot: any, type: 'spot' | 'futures') => ({
         id: bot.id ?? bot.pk ?? bot._id ?? String(bot.task_id || bot.taskId || Math.random()),
@@ -88,7 +96,14 @@ export const Dashboard: React.FC = () => {
         return total + profit;
       }, 0);
 
-      const subscriptionTier = userProfile?.subscription_tier || user?.subscription_tier || 'starter';
+      // Use subscription tier from profile API, with fallback chain
+      const subscriptionTier = userProfile?.subscription_tier ||
+        userProfile?.subscription ||
+        userProfile?.plan ||
+        user?.subscription_tier ||
+        'free';
+
+      console.log('📊 Final subscription tier used:', subscriptionTier);
 
       const dashboardStats: DashboardStatsType = {
         active_bots: activeBotsData.length,
@@ -111,7 +126,7 @@ export const Dashboard: React.FC = () => {
         active_bots: 0,
         total_profit: 0,
         connected_exchanges: 0,
-        subscription_tier: user?.subscription_tier || 'starter',
+        subscription_tier: user?.subscription_tier || 'free',
         total_bots: 0,
         running_futures_bots: 0,
         running_spot_bots: 0
@@ -186,6 +201,9 @@ export const Dashboard: React.FC = () => {
 
       {/* Stats */}
       <DashboardStats stats={stats} />
+
+      {/* Performance Chart */}
+      <PerformanceChart />
 
       {/* Active Trades Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
