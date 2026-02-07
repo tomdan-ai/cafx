@@ -7,6 +7,7 @@ import { PairSelector } from '../components/ui/PairSelector';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { BotDetailsModal } from '../components/dashboard/BotDetailsModal';
 import { GridPreview } from '../components/dashboard/GridPriceVisualization';
+import { PriceChart } from '../components/ui/PriceChart';
 import { apiService } from '../utils/api';
 import { useAuthStore } from '../store/authStore';
 import { Plus, TrendingUp, TrendingDown, Key, Eye, EyeOff, Trash2 } from 'lucide-react';
@@ -64,8 +65,11 @@ export const TradingBots: React.FC = () => {
     lower_price: '',
     investment_amount: '',
     run_hours: '24',
-    leverage: '',
-    strategy_type: 'long'
+    leverage: '5',
+    strategy_type: 'long',
+    loss_threshold: '10',
+    acceptable_loss_per_grid: '1.5',
+    enable_grid_stop_loss: true
   });
 
   const handleGridSizeChange = (value: string) => {
@@ -216,24 +220,20 @@ export const TradingBots: React.FC = () => {
         botConfig = {
           mode: 'auto',
           symbol: botForm.symbol,
-          grid_size: gridSize, // User-controlled grid size
+          grid_size: gridSize,
+          upper_price: parseFloat(botForm.upper_price) || 0,
+          lower_price: parseFloat(botForm.lower_price) || 0,
           exchange: botForm.exchange,
           investment_amount: parseFloat(botForm.investment_amount),
-          run_hours: parseInt(botForm.run_hours), // User-controlled duration
+          run_hours: parseInt(botForm.run_hours),
           api_key: botForm.api_key.trim(),
           api_secret: botForm.api_secret.trim(),
+          leverage: parseInt(botForm.leverage) || 5,
+          strategy_type: botForm.strategy_type,
+          loss_threshold: parseFloat(botForm.loss_threshold) || 10,
+          acceptable_loss_per_grid: parseFloat(botForm.acceptable_loss_per_grid) || 1.5,
+          enable_grid_stop_loss: botForm.enable_grid_stop_loss
         };
-
-        if (botForm.type === 'futures') {
-          // Only include leverage if it's provided and valid
-          if (botForm.leverage && botForm.leverage.trim() !== '') {
-            const leverageValue = parseInt(botForm.leverage);
-            if (!isNaN(leverageValue) && leverageValue >= 1) {
-              botConfig.leverage = leverageValue;
-            }
-          }
-          // Strategy type is auto-decided by the bot based on market analysis
-        }
       } else {
         // Manual mode - full config
         botConfig = {
@@ -247,19 +247,12 @@ export const TradingBots: React.FC = () => {
           exchange: botForm.exchange,
           api_key: botForm.api_key.trim(),
           api_secret: botForm.api_secret.trim(),
+          leverage: parseInt(botForm.leverage) || 5,
+          strategy_type: botForm.strategy_type,
+          loss_threshold: parseFloat(botForm.loss_threshold) || 10,
+          acceptable_loss_per_grid: parseFloat(botForm.acceptable_loss_per_grid) || 1.5,
+          enable_grid_stop_loss: botForm.enable_grid_stop_loss
         };
-
-        if (botForm.type === 'futures') {
-          // Only include leverage if it's provided and valid
-          // If not provided, backend will decide automatically
-          if (botForm.leverage && botForm.leverage.trim() !== '') {
-            const leverageValue = parseInt(botForm.leverage);
-            if (!isNaN(leverageValue) && leverageValue >= 1) {
-              botConfig.leverage = leverageValue;
-            }
-          }
-          // Strategy type is auto-decided by the bot based on market analysis
-        }
       }
 
       console.log('🛠️ handleCreateBot - Prepared botConfig:', botConfig);
@@ -347,8 +340,11 @@ export const TradingBots: React.FC = () => {
         lower_price: '',
         investment_amount: '',
         run_hours: '24',
-        leverage: '',
-        strategy_type: 'long'
+        leverage: '5',
+        strategy_type: 'long',
+        loss_threshold: '10',
+        acceptable_loss_per_grid: '1.5',
+        enable_grid_stop_loss: true
       });
 
       toast.success('Bot created and started successfully!');
@@ -849,6 +845,18 @@ export const TradingBots: React.FC = () => {
                 </div>
               </div>
 
+              {/* Price Chart - Auto Mode */}
+              {botForm.symbol && (
+                <div className="bg-[var(--color-surface-dark)] rounded-xl p-4">
+                  <PriceChart
+                    symbol={botForm.symbol}
+                    height={140}
+                    showToggle={true}
+                    showStats={true}
+                  />
+                </div>
+              )}
+
               {/* Run Hours - for Auto Mode */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-300">Run Hours</label>
@@ -928,6 +936,18 @@ export const TradingBots: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Price Chart - Manual Mode */}
+              {botForm.symbol && (
+                <div className="bg-[var(--color-surface-dark)] rounded-xl p-4">
+                  <PriceChart
+                    symbol={botForm.symbol}
+                    height={140}
+                    showToggle={true}
+                    showStats={true}
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
