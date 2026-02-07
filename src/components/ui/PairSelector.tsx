@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { Search, Star, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Star, ChevronDown, TrendingUp, TrendingDown } from 'lucide-react';
+import { getTokenLogo, parsePairSymbols, getPlaceholderGradient } from '../../utils/tokenLogos';
+import { get24hTicker, Ticker24h } from '../../utils/binance';
+import { MiniSparkline } from './PriceChart';
 
 interface Pair {
     value: string;
@@ -14,6 +17,71 @@ interface PairSelectorProps {
 }
 
 const popularPairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'];
+
+// Token logo component with fallback
+const TokenLogo: React.FC<{ symbol: string; size?: number }> = ({ symbol, size = 32 }) => {
+    const [hasError, setHasError] = useState(false);
+    const { base } = parsePairSymbols(symbol);
+    const logoUrl = getTokenLogo(base);
+
+    if (hasError) {
+        return (
+            <div
+                className="rounded-lg flex items-center justify-center"
+                style={{
+                    width: size,
+                    height: size,
+                    background: getPlaceholderGradient(base)
+                }}
+            >
+                <span className="text-white font-bold text-xs">
+                    {base.slice(0, 2)}
+                </span>
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={logoUrl}
+            alt={base}
+            className="rounded-lg object-cover"
+            style={{ width: size, height: size }}
+            onError={() => setHasError(true)}
+        />
+    );
+};
+
+// Price change badge component
+const PriceChangeBadge: React.FC<{ symbol: string }> = ({ symbol }) => {
+    const [ticker, setTicker] = useState<Ticker24h | null>(null);
+
+    useEffect(() => {
+        const fetchTicker = async () => {
+            const data = await get24hTicker(symbol);
+            setTicker(data);
+        };
+        fetchTicker();
+    }, [symbol]);
+
+    if (!ticker) {
+        return <div className="w-12 h-4 bg-gray-700/50 rounded animate-pulse" />;
+    }
+
+    const isPositive = ticker.priceChangePercent >= 0;
+
+    return (
+        <div className={`flex items-center gap-0.5 text-xs font-medium ${isPositive ? 'text-green-400' : 'text-red-400'
+            }`}>
+            {isPositive ? (
+                <TrendingUp className="w-3 h-3" />
+            ) : (
+                <TrendingDown className="w-3 h-3" />
+            )}
+            {isPositive ? '+' : ''}{ticker.priceChangePercent.toFixed(2)}%
+        </div>
+    );
+};
 
 export const PairSelector: React.FC<PairSelectorProps> = ({
     pairs,
@@ -66,17 +134,19 @@ export const PairSelector: React.FC<PairSelectorProps> = ({
                 {selectedPair ? (
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-[var(--color-primary)]/15 flex items-center justify-center">
-                                <span className="text-[var(--color-primary)] font-bold text-sm">
-                                    {selectedPair.replace('USDT', '').slice(0, 3)}
-                                </span>
-                            </div>
+                            <TokenLogo symbol={selectedPair} size={40} />
                             <div>
                                 <p className="font-semibold text-white">{selectedPairData?.label || selectedPair}</p>
-                                <p className="text-xs text-gray-500">{selectedPair}</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-xs text-gray-500">{selectedPair}</p>
+                                    <PriceChangeBadge symbol={selectedPair} />
+                                </div>
                             </div>
                         </div>
-                        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                        <div className="flex items-center gap-3">
+                            <MiniSparkline symbol={selectedPair} width={50} height={20} />
+                            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                        </div>
                     </div>
                 ) : (
                     <div className="flex items-center justify-between">
@@ -120,13 +190,14 @@ export const PairSelector: React.FC<PairSelectorProps> = ({
                                             setIsOpen(false);
                                         }}
                                         className={`
-                      px-3 py-2 rounded-lg text-sm transition-all
+                      flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all
                       ${selectedPair === pair
                                                 ? 'bg-[var(--color-primary)] text-white'
                                                 : 'bg-[var(--color-surface-light)] text-gray-300 hover:bg-[var(--color-surface-dark)]'
                                             }
                     `}
                                     >
+                                        <TokenLogo symbol={pair} size={20} />
                                         <span className="font-medium">{pair.replace('USDT', '')}</span>
                                     </button>
                                 ))}
@@ -135,7 +206,7 @@ export const PairSelector: React.FC<PairSelectorProps> = ({
                     )}
 
                     {/* Pair list */}
-                    <div className="max-h-64 overflow-y-auto">
+                    <div className="max-h-72 overflow-y-auto">
                         {filteredPairs.length > 0 ? (
                             filteredPairs.map(pair => {
                                 const isFavorite = favorites.includes(pair.value);
@@ -168,12 +239,17 @@ export const PairSelector: React.FC<PairSelectorProps> = ({
                                                     className={`w-4 h-4 ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}`}
                                                 />
                                             </button>
+                                            <TokenLogo symbol={pair.value} size={32} />
                                             <div className="text-left">
                                                 <p className={`font-medium ${isSelected ? 'text-[var(--color-primary)]' : 'text-white'}`}>
                                                     {pair.label}
                                                 </p>
                                                 <p className="text-xs text-gray-500">{pair.value}</p>
                                             </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <PriceChangeBadge symbol={pair.value} />
+                                            <MiniSparkline symbol={pair.value} width={40} height={16} />
                                         </div>
                                     </button>
                                 );
