@@ -273,6 +273,31 @@ export const apiService = {
     return response.data;
   },
 
+  // Get minimum investment required for a grid bot configuration
+  getMinInvestment: async (params: {
+    exchange: string;
+    symbol: string;
+    grid_size: number;
+    leverage?: number;
+  }) => {
+    const queryParams: Record<string, any> = {
+      exchange: params.exchange,
+      symbol: params.symbol,
+      grid_size: params.grid_size,
+    };
+    if (params.leverage !== undefined) {
+      queryParams.leverage = params.leverage;
+    }
+    const response = await api.get('/api/futures/min-investment/', { params: queryParams });
+    return response.data as { min_investment: string; currency: string };
+  },
+
+  // Poll bot status to confirm termination
+  getFuturesBotStatus: async (botId: number | string) => {
+    const response = await api.get(`/api/futures/bot-status/${botId}/`);
+    return response.data as { bot_id: number; is_running: boolean; status: string };
+  },
+
   // Delete bot functions
   deleteFuturesBot: async (taskId: string) => {
     console.log('🗑️ Deleting futures bot:', taskId);
