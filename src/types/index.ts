@@ -100,3 +100,8 @@ export interface SubscriptionStatus {
   days_remaining?: number;
   invoice_sent?: boolean;
 }
+
+export interface MinInvestmentResponse {
+  min_investment: string;
+  currency: string;
+}
