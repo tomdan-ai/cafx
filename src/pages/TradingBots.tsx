@@ -52,6 +52,14 @@ export const TradingBots: React.FC = () => {
   const [botToDelete, setBotToDelete] = useState<TradingBot | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Minimum investment state
+  const [minInvestment, setMinInvestment] = useState<{ amount: string; currency: string } | null>(null);
+  const [minInvestmentLoading, setMinInvestmentLoading] = useState(false);
+  const [minInvestmentError, setMinInvestmentError] = useState('');
+
+  // Bot termination lock - tracks which bots are currently being stopped
+  const [stoppingBots, setStoppingBots] = useState<Set<string>>(new Set());
+
   const [botForm, setBotForm] = useState({
     name: '',
     mode: 'auto' as 'auto' | 'manual',
@@ -87,6 +95,47 @@ export const TradingBots: React.FC = () => {
       setGridSizeError('');
     }
   };
+
+  // Fetch minimum investment whenever pair, grid size, exchange, or leverage changes
+  useEffect(() => {
+    const fetchMinInvestment = async () => {
+      // Need at least exchange, symbol, and valid grid_size
+      if (!botForm.exchange || !botForm.symbol || !botForm.grid_size) {
+        setMinInvestment(null);
+        setMinInvestmentError('');
+        return;
+      }
+
+      const gridSize = parseInt(botForm.grid_size);
+      if (isNaN(gridSize) || gridSize <= 0 || gridSize > 50) {
+        setMinInvestment(null);
+        return;
+      }
+
+      setMinInvestmentLoading(true);
+      setMinInvestmentError('');
+
+      try {
+        const result = await apiService.getMinInvestment({
+          exchange: botForm.exchange,
+          symbol: botForm.symbol,
+          grid_size: gridSize,
+          leverage: botForm.type === 'futures' ? parseInt(botForm.leverage) || 1 : undefined,
+        });
+        setMinInvestment({ amount: result.min_investment, currency: result.currency });
+      } catch (error: any) {
+        console.warn('Failed to fetch min investment:', error);
+        setMinInvestmentError('Could not calculate minimum investment');
+        setMinInvestment(null);
+      } finally {
+        setMinInvestmentLoading(false);
+      }
+    };
+
+    // Debounce the API call
+    const timer = setTimeout(fetchMinInvestment, 500);
+    return () => clearTimeout(timer);
+  }, [botForm.exchange, botForm.symbol, botForm.grid_size, botForm.leverage, botForm.type]);
 
   const normalizeBot = (bot: any, type: 'spot' | 'futures') => ({
     id: bot.id ?? bot.pk ?? bot._id ?? String(bot.task_id || bot.taskId || Math.random()),
@@ -208,6 +257,16 @@ export const TradingBots: React.FC = () => {
     if (gridSize > 50) {
       toast.error('Grid size must be 50 or less');
       return;
+    }
+
+    // Validate investment amount against minimum
+    if (minInvestment) {
+      const minAmount = parseFloat(minInvestment.amount);
+      const investmentAmount = parseFloat(botForm.investment_amount);
+      if (!isNaN(minAmount) && !isNaN(investmentAmount) && investmentAmount < minAmount) {
+        toast.error(`Investment amount must be at least ${minAmount} ${minInvestment.currency} for ${botForm.grid_size} grids on this pair`);
+        return;
+      }
     }
 
     setCreating(true);
@@ -386,11 +445,46 @@ export const TradingBots: React.FC = () => {
       return;
     }
 
+    const botKey = String(bot.id);
+
+    // Check if bot is already being stopped (lock check)
+    if (stoppingBots.has(botKey)) {
+      toast('Bot is already being stopped, please wait...', { icon: '⏳' });
+      return;
+    }
+
+    // Acquire lock - mark bot as stopping
+    setStoppingBots(prev => new Set(prev).add(botKey));
+
     try {
+      toast('Stopping bot...', { icon: '🛑', duration: 2000 });
+
       if (bot.type === 'futures') {
         await apiService.stopFuturesBot(bot.task_id);
+
+        // Poll for termination confirmation (up to 15 seconds)
+        let confirmed = false;
+        for (let i = 0; i < 5; i++) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          try {
+            const status = await apiService.getFuturesBotStatus(bot.id);
+            if (!status.is_running) {
+              confirmed = true;
+              break;
+            }
+          } catch {
+            // Status endpoint might fail, that's ok
+            break;
+          }
+        }
+
+        if (confirmed) {
+          console.log('✅ Bot stop confirmed via polling');
+        }
       } else {
         await apiService.stopSpotBot(bot.task_id);
+        // Wait a moment for the backend to process the stop
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
       // Refresh bots list (user scoped)
@@ -415,6 +509,13 @@ export const TradingBots: React.FC = () => {
         const message = getErrorMessage(error, 'Failed to stop bot. Please try again.');
         toast.error(message);
       }
+    } finally {
+      // Release lock - remove bot from stopping set
+      setStoppingBots(prev => {
+        const next = new Set(prev);
+        next.delete(botKey);
+        return next;
+      });
     }
   };
 
@@ -436,7 +537,17 @@ export const TradingBots: React.FC = () => {
       return;
     }
 
+    const botKey = String(botToDelete.id);
+
+    // Check if bot is already being stopped (lock check)
+    if (stoppingBots.has(botKey)) {
+      toast('Bot is already being stopped, please wait...', { icon: '⏳' });
+      return;
+    }
+
     setDeleting(true);
+    // Acquire lock
+    setStoppingBots(prev => new Set(prev).add(botKey));
 
     try {
       console.log('🗑️ Deleting bot:', botToDelete.id, botToDelete.task_id);
@@ -449,6 +560,8 @@ export const TradingBots: React.FC = () => {
           } else {
             await apiService.stopSpotBot(botToDelete.task_id);
           }
+          // Wait for backend to process the stop before deleting
+          await new Promise(resolve => setTimeout(resolve, 2000));
           console.log('✅ Bot stopped successfully');
         } catch (stopError: any) {
           // Continue even if stop fails (bot might already be stopped)
@@ -505,6 +618,14 @@ export const TradingBots: React.FC = () => {
       }
     } finally {
       setDeleting(false);
+      // Release lock
+      if (botToDelete) {
+        setStoppingBots(prev => {
+          const next = new Set(prev);
+          next.delete(String(botToDelete.id));
+          return next;
+        });
+      }
     }
   };
 
@@ -607,8 +728,16 @@ export const TradingBots: React.FC = () => {
                       variant="danger"
                       size="sm"
                       onClick={() => handleStopBot(bot)}
+                      disabled={stoppingBots.has(String(bot.id))}
                     >
-                      Stop
+                      {stoppingBots.has(String(bot.id)) ? (
+                        <span className="flex items-center gap-1">
+                          <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Stopping
+                        </span>
+                      ) : (
+                        'Stop'
+                      )}
                     </Button>
                   ) : (
                     <Button
@@ -1031,15 +1160,38 @@ export const TradingBots: React.FC = () => {
           )}
 
           {/* Investment Amount - Always visible */}
-          <Input
-            label="Investment Amount"
-            type="number"
-            step="0.01"
-            value={botForm.investment_amount}
-            onChange={(e) => setBotForm({ ...botForm, investment_amount: e.target.value })}
-            placeholder="Investment amount"
-            required
-          />
+          <div>
+            <Input
+              label="Investment Amount"
+              type="number"
+              step="0.01"
+              min={minInvestment ? parseFloat(minInvestment.amount) : undefined}
+              value={botForm.investment_amount}
+              onChange={(e) => setBotForm({ ...botForm, investment_amount: e.target.value })}
+              placeholder={minInvestment ? `Min: ${parseFloat(minInvestment.amount).toFixed(2)} ${minInvestment.currency}` : 'Investment amount'}
+              required
+            />
+            {/* Min investment hint */}
+            {minInvestmentLoading && (
+              <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                <span className="w-3 h-3 border-2 border-gray-400/30 border-t-gray-400 rounded-full animate-spin" />
+                Calculating minimum investment...
+              </p>
+            )}
+            {minInvestment && !minInvestmentLoading && (
+              <p className="text-xs text-emerald-400 mt-1">
+                💰 Minimum investment for {botForm.grid_size} grids: <span className="font-semibold">{parseFloat(minInvestment.amount).toFixed(2)} {minInvestment.currency}</span>
+              </p>
+            )}
+            {minInvestmentError && !minInvestmentLoading && (
+              <p className="text-xs text-yellow-400 mt-1">⚠️ {minInvestmentError}</p>
+            )}
+            {minInvestment && botForm.investment_amount && parseFloat(botForm.investment_amount) < parseFloat(minInvestment.amount) && (
+              <p className="text-xs text-red-400 mt-1">
+                ❌ Amount is below the minimum. The bot may fail to place orders.
+              </p>
+            )}
+          </div>
 
           <div className="flex space-x-4">
             <Button
