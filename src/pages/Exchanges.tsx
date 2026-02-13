@@ -7,6 +7,7 @@ import { apiService } from '../utils/api';
 import { CheckCircle, XCircle, Plus, Key, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/errorUtils';
+import { getExchangeLogo, getExchangeGradient } from '../utils/exchangeLogos';
 
 interface Exchange {
   value: string;
@@ -70,13 +71,13 @@ export const Exchanges: React.FC = () => {
   };
 
   const isExchangeConnected = (exchangeValue: string) => {
-    return connectedExchanges.some(ex => 
+    return connectedExchanges.some(ex =>
       ex.name.toLowerCase() === exchangeValue.toLowerCase() && ex.connected
     );
   };
 
   const getExchangeStatus = (exchangeValue: string) => {
-    const connected = connectedExchanges.find(ex => 
+    const connected = connectedExchanges.find(ex =>
       ex.name.toLowerCase() === exchangeValue.toLowerCase()
     );
     return connected?.connected ? 'connected' : 'disconnected';
@@ -96,21 +97,21 @@ export const Exchanges: React.FC = () => {
 
     try {
       setConnecting(true);
-      
+
       await apiService.connectExchange(
         connectionModal.exchange.value,
         apiKey.trim(),
         apiSecret.trim()
       );
-      
+
       toast.success(`Successfully connected to ${connectionModal.exchange.label}!`);
-      
+
       // Add a small delay to allow server to process the connection
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Refresh the exchanges list
       await fetchExchanges();
-      
+
       // Close modal
       setConnectionModal({ isOpen: false, exchange: null });
       setApiKey('');
@@ -127,16 +128,16 @@ export const Exchanges: React.FC = () => {
     try {
       // Remove from localStorage since server doesn't have proper disconnect endpoint
       const connectedExchanges = JSON.parse(localStorage.getItem('connectedExchanges') || '[]');
-      const updatedExchanges = connectedExchanges.map((ex: any) => 
-        ex.name.toLowerCase() === exchangeName.toLowerCase() 
+      const updatedExchanges = connectedExchanges.map((ex: any) =>
+        ex.name.toLowerCase() === exchangeName.toLowerCase()
           ? { ...ex, connected: false }
           : ex
       );
-      
+
       localStorage.setItem('connectedExchanges', JSON.stringify(updatedExchanges));
-      
+
       toast.success(`Successfully disconnected from ${exchangeName}!`);
-      
+
       // Refresh the exchanges list to update UI
       await fetchExchanges();
     } catch (error) {
@@ -190,16 +191,30 @@ export const Exchanges: React.FC = () => {
             {connectedExchanges.filter(ex => ex.connected).map((exchange, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg">
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
-                    <span className="text-sm font-bold text-green-400">
+                  {(() => {
+                    const logoUrl = exchange.image || getExchangeLogo(exchange.name);
+                    return logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt={exchange.name}
+                        className="w-8 h-8 rounded-lg object-cover"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex'; }}
+                      />
+                    ) : null;
+                  })()}
+                  <div
+                    className="w-8 h-8 rounded-lg items-center justify-center"
+                    style={{ display: (exchange.image || getExchangeLogo(exchange.name)) ? 'none' : 'flex', background: getExchangeGradient(exchange.name) }}
+                  >
+                    <span className="text-sm font-bold text-white">
                       {exchange.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <span className="text-white font-medium">{exchange.name}</span>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="text-red-400 hover:text-red-300"
                   onClick={() => handleDisconnectExchange(exchange.name)}
                 >
@@ -218,28 +233,30 @@ export const Exchanges: React.FC = () => {
           {supportedExchanges.map((exchange) => {
             const isConnected = isExchangeConnected(exchange.value);
             const status = getExchangeStatus(exchange.value);
-            
+
             return (
               <Card key={exchange.value} hover glow className="group relative overflow-hidden">
                 {/* Exchange Logo/Icon */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-lg flex items-center justify-center border border-purple-500/30">
-                      {exchange.image ? (
-                        <img 
-                          src={exchange.image} 
-                          alt={exchange.label}
-                          className="w-8 h-8 rounded"
-                          onError={(e) => {
-                            // Fallback to text if image fails
-                            e.currentTarget.style.display = 'none';
-                            (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
-                          }}
-                        />
-                      ) : null}
-                      <span 
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-lg flex items-center justify-center border border-purple-500/30 overflow-hidden">
+                      {(() => {
+                        const logoUrl = exchange.image || getExchangeLogo(exchange.value);
+                        return logoUrl ? (
+                          <img
+                            src={logoUrl}
+                            alt={exchange.label}
+                            className="w-8 h-8 rounded object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
+                            }}
+                          />
+                        ) : null;
+                      })()}
+                      <span
                         className="text-lg font-bold text-white"
-                        style={{ display: exchange.image ? 'none' : 'block' }}
+                        style={{ display: (exchange.image || getExchangeLogo(exchange.value)) ? 'none' : 'block' }}
                       >
                         {exchange.label.charAt(0)}
                       </span>
@@ -248,9 +265,8 @@ export const Exchanges: React.FC = () => {
                       <h3 className="text-lg font-semibold text-white">{exchange.label}</h3>
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(status)}
-                        <span className={`text-sm capitalize ${
-                          status === 'connected' ? 'text-green-400' : 'text-gray-400'
-                        }`}>
+                        <span className={`text-sm capitalize ${status === 'connected' ? 'text-green-400' : 'text-gray-400'
+                          }`}>
                           {status}
                         </span>
                       </div>
@@ -266,9 +282,9 @@ export const Exchanges: React.FC = () => {
                         <CheckCircle className="w-4 h-4 text-green-400 mr-2" />
                         <span className="text-sm text-green-400 font-medium">Connected</span>
                       </div>
-                      <Button 
-                        variant="outline" 
-                        className="w-full" 
+                      <Button
+                        variant="outline"
+                        className="w-full"
                         size="sm"
                         onClick={() => handleDisconnectExchange(exchange.value)}
                       >
@@ -277,9 +293,9 @@ export const Exchanges: React.FC = () => {
                       </Button>
                     </div>
                   ) : (
-                    <Button 
-                      variant="primary" 
-                      className="w-full" 
+                    <Button
+                      variant="primary"
+                      className="w-full"
                       onClick={() => handleConnectExchange(exchange)}
                     >
                       <Plus className="w-4 h-4 mr-2" />
@@ -306,7 +322,7 @@ export const Exchanges: React.FC = () => {
         <div className="space-y-6">
           <div className="text-center p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
             <p className="text-sm text-blue-300">
-              To connect your exchange, you'll need to provide your API credentials. 
+              To connect your exchange, you'll need to provide your API credentials.
               Make sure your API key has trading permissions enabled.
             </p>
           </div>
@@ -321,7 +337,7 @@ export const Exchanges: React.FC = () => {
                 <div className="text-sm text-yellow-200">
                   <p className="font-medium mb-1">Use Exchange API Credentials Only</p>
                   <p className="text-xs text-yellow-300/80">
-                    Enter your exchange API key and secret (not email/password). 
+                    Enter your exchange API key and secret (not email/password).
                     API keys are typically 32+ characters long and contain alphanumeric characters.
                   </p>
                 </div>
