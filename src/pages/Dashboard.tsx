@@ -51,21 +51,33 @@ export const Dashboard: React.FC = () => {
       console.log('📦 Profile Response:', userProfile);
       console.log('📦 Profile subscription_tier:', userProfile?.subscription_tier);
 
-      const normalizeBot = (bot: any, type: 'spot' | 'futures') => ({
-        id: bot.id ?? bot.pk ?? bot._id ?? String(bot.task_id || bot.taskId || Math.random()),
-        name: bot.name || bot.pair || `${type.toUpperCase()} Bot`,
-        type,
-        exchange: bot.exchange || bot.exchange_name || bot.exchange_id || 'Unknown',
-        pair: bot.pair || bot.symbol || bot.pair_symbol || '',
-        status: bot.is_running || bot.status === 'running' || bot.status === 'active' ? 'active' : 'inactive',
-        is_running: bot.is_running || bot.status === 'running' || bot.status === 'active',
-        profit_loss: bot.profit_loss ?? bot.profit ?? 0,
-        investment_amount: bot.investment_amount || 0,
-        created_at: bot.date_created || bot.created_at || bot.created || new Date().toISOString(),
-        task_id: bot.task_id || bot.taskId || bot.task || undefined,
-        strategy_type: type,
-        __raw: bot
-      });
+      const normalizeBot = (bot: any, type: 'spot' | 'futures') => {
+        // Robustly determine if bot is running
+        const isRunning = bot.is_running === true || bot.is_running === 'true' ||
+          bot.status === 'running' || bot.status === 'active' ||
+          bot.state === 'running' || bot.state === 'active';
+
+        // Extract profit from all possible field names
+        const profitLoss = Number(bot.profit_loss) || Number(bot.total_profit) ||
+          Number(bot.profit) || Number(bot.pnl) ||
+          Number(bot.unrealized_pnl) || Number(bot.realized_pnl) || 0;
+
+        return {
+          id: bot.id ?? bot.pk ?? bot._id ?? String(bot.task_id || bot.taskId || Math.random()),
+          name: bot.name || bot.pair || bot.symbol || `${type.toUpperCase()} Bot`,
+          type,
+          exchange: bot.exchange || bot.exchange_name || bot.exchange_id || 'Unknown',
+          pair: bot.pair || bot.symbol || bot.pair_symbol || '',
+          status: isRunning ? 'active' : 'inactive',
+          is_running: isRunning,
+          profit_loss: Math.round(profitLoss * 100) / 100,
+          investment_amount: bot.investment_amount || 0,
+          created_at: bot.date_created || bot.created_at || bot.created || new Date().toISOString(),
+          task_id: bot.task_id || bot.taskId || bot.task || undefined,
+          strategy_type: type,
+          __raw: bot
+        };
+      };
 
       const futuresBots = Array.isArray(futuresBotsResponse)
         ? futuresBotsResponse.map((b: any) => normalizeBot(b, 'futures'))
@@ -91,10 +103,9 @@ export const Dashboard: React.FC = () => {
 
       setActiveBots(activeBotsData);
 
-      const totalProfit = activeBotsData.reduce((total: number, bot: any) => {
-        const profit = bot.profit_loss || 0;
-        return total + profit;
-      }, 0);
+      // Use cumulative_pnl from the profile API as the authoritative PnL
+      const cumulativePnl = Number(userProfile?.cumulative_pnl) || 0;
+      const totalProfit = Math.round(cumulativePnl * 100) / 100;
 
       // Use subscription tier from profile API, with fallback chain
       const subscriptionTier = userProfile?.subscription_tier ||
@@ -107,7 +118,7 @@ export const Dashboard: React.FC = () => {
 
       const dashboardStats: DashboardStatsType = {
         active_bots: activeBotsData.length,
-        total_profit: Math.round(totalProfit * 100) / 100,
+        total_profit: totalProfit,
         connected_exchanges: connectedCount,
         subscription_tier: subscriptionTier,
         total_bots: allBots.length,
@@ -180,7 +191,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-8 fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white">
             Welcome back, {user?.username}
@@ -189,14 +200,14 @@ export const Dashboard: React.FC = () => {
             Here's an overview of <span className="text-[var(--color-primary)] font-semibold">MERLIN's</span> Trading Performance
           </p>
         </div>
-        <Button
-          variant="secondary"
+        <button
           onClick={() => fetchDashboardData(true)}
           disabled={refreshing}
+          className="flex-shrink-0 w-10 h-10 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-[var(--color-border-light)] hover:bg-[var(--color-surface-light)] transition-all flex items-center justify-center disabled:opacity-50"
+          title="Refresh dashboard"
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Refreshing...' : 'Refresh'}
-        </Button>
+          <RefreshCw className={`w-4 h-4 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       {/* Stats */}
