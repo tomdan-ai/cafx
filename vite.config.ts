@@ -7,4 +7,14 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    proxy: {
+      '/binance-api': {
+        target: 'https://api.binance.com/api/v3',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/binance-api/, ''),
+      },
+    },
+  },
 });
