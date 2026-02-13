@@ -331,6 +331,38 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
             </div>
           )}
 
+          {/* Risk Management Details */}
+          {bot.type === 'futures' && (config.loss_threshold || config.acceptable_loss_per_grid || config.enable_grid_stop_loss !== undefined) && (
+            <div className="bg-gray-800/60 rounded-xl p-4 border border-gray-700/50 backdrop-blur-sm">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="p-1.5 bg-red-500/20 rounded-lg">
+                  <Shield className="w-3.5 h-3.5 text-red-400" />
+                </div>
+                <h3 className="text-xs sm:text-sm font-semibold text-white">Risk Management</h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Grid Stop Loss</p>
+                  <p className={`text-sm font-bold ${config.enable_grid_stop_loss ? 'text-emerald-400' : 'text-gray-400'}`}>
+                    {config.enable_grid_stop_loss ? 'Enabled' : 'Disabled'}
+                  </p>
+                </div>
+                {config.loss_threshold && (
+                  <div>
+                    <p className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Loss Threshold</p>
+                    <p className="text-sm font-bold text-white">{config.loss_threshold}%</p>
+                  </div>
+                )}
+                {config.acceptable_loss_per_grid && (
+                  <div>
+                    <p className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Loss Per Grid</p>
+                    <p className="text-sm font-bold text-white">{config.acceptable_loss_per_grid}%</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Meta Grid Configuration - Visual Ladder & Details */}
           {(() => {
             const metaData = Array.isArray(config.meta) ? config.meta[0] : config.meta;
