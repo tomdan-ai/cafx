@@ -230,15 +230,17 @@ export const PairSelector: React.FC<PairSelectorProps> = ({
                     `}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <button
-                                                type="button"
+                                            <div
+                                                role="button"
+                                                tabIndex={0}
                                                 onClick={(e) => toggleFavorite(pair.value, e)}
-                                                className="p-1 hover:bg-[var(--color-surface-dark)] rounded"
+                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleFavorite(pair.value, e as any); } }}
+                                                className="p-1 hover:bg-[var(--color-surface-dark)] rounded cursor-pointer"
                                             >
                                                 <Star
                                                     className={`w-4 h-4 ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}`}
                                                 />
-                                            </button>
+                                            </div>
                                             <TokenLogo symbol={pair.value} size={32} />
                                             <div className="text-left">
                                                 <p className={`font-medium ${isSelected ? 'text-[var(--color-primary)]' : 'text-white'}`}>
