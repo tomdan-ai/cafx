@@ -76,9 +76,9 @@ export const TradingBots: React.FC = () => {
     run_hours: '24',
     leverage: '5',
     strategy_type: 'long',
-    loss_threshold: '10',
-    acceptable_loss_per_grid: '1.5',
-    enable_grid_stop_loss: true
+    loss_threshold: '',
+    acceptable_loss_per_grid: '',
+    enable_grid_stop_loss: false
   });
 
   const handleGridSizeChange = (value: string) => {
@@ -290,9 +290,9 @@ export const TradingBots: React.FC = () => {
           api_secret: botForm.api_secret.trim(),
           leverage: parseInt(botForm.leverage) || 5,
           strategy_type: botForm.strategy_type,
-          loss_threshold: parseFloat(botForm.loss_threshold) || 10,
-          acceptable_loss_per_grid: parseFloat(botForm.acceptable_loss_per_grid) || 1.5,
-          enable_grid_stop_loss: botForm.enable_grid_stop_loss
+          ...(botForm.loss_threshold ? { loss_threshold: parseFloat(botForm.loss_threshold) } : {}),
+          ...(botForm.acceptable_loss_per_grid ? { acceptable_loss_per_grid: parseFloat(botForm.acceptable_loss_per_grid) } : {}),
+          ...(botForm.enable_grid_stop_loss ? { enable_grid_stop_loss: true } : {})
         };
       } else {
         // Manual mode - full config
@@ -309,9 +309,9 @@ export const TradingBots: React.FC = () => {
           api_secret: botForm.api_secret.trim(),
           leverage: parseInt(botForm.leverage) || 5,
           strategy_type: botForm.strategy_type,
-          loss_threshold: parseFloat(botForm.loss_threshold) || 10,
-          acceptable_loss_per_grid: parseFloat(botForm.acceptable_loss_per_grid) || 1.5,
-          enable_grid_stop_loss: botForm.enable_grid_stop_loss
+          ...(botForm.loss_threshold ? { loss_threshold: parseFloat(botForm.loss_threshold) } : {}),
+          ...(botForm.acceptable_loss_per_grid ? { acceptable_loss_per_grid: parseFloat(botForm.acceptable_loss_per_grid) } : {}),
+          ...(botForm.enable_grid_stop_loss ? { enable_grid_stop_loss: true } : {})
         };
       }
 
@@ -402,9 +402,9 @@ export const TradingBots: React.FC = () => {
         run_hours: '24',
         leverage: '5',
         strategy_type: 'long',
-        loss_threshold: '10',
-        acceptable_loss_per_grid: '1.5',
-        enable_grid_stop_loss: true
+        loss_threshold: '',
+        acceptable_loss_per_grid: '',
+        enable_grid_stop_loss: false
       });
 
       toast.success('Bot created and started successfully!');
@@ -859,8 +859,8 @@ export const TradingBots: React.FC = () => {
                     type="button"
                     onClick={() => setBotForm({ ...botForm, exchange: exchange.value })}
                     className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all ${isSelected
-                        ? 'bg-[var(--color-primary)]/15 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]/30'
-                        : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-border-light)] hover:bg-[var(--color-surface-light)]'
+                      ? 'bg-[var(--color-primary)]/15 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]/30'
+                      : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-border-light)] hover:bg-[var(--color-surface-light)]'
                       }`}
                   >
                     {logoUrl ? (
