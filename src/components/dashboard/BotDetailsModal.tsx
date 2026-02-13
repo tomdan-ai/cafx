@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import TradingViewChart from '../ui/TradingViewChart';
+import { getTokenLogo, parsePairSymbols } from '../../utils/tokenLogos';
 import {
   TrendingUp,
   TrendingDown,
@@ -206,7 +208,20 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
                     ? 'from-green-500/30 to-emerald-500/20 border-green-500/40'
                     : 'from-gray-500/30 to-gray-600/20 border-gray-500/40'
                     } border-2 flex items-center justify-center backdrop-blur-sm`}>
-                    <img src="/MERLIN.png" alt="Bot" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
+                    {(() => {
+                      const { base } = parsePairSymbols(bot.pair || config?.symbol || 'BTC');
+                      const logoUrl = getTokenLogo(base);
+                      return (
+                        <img
+                          src={logoUrl}
+                          alt={base}
+                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      );
+                    })()}
                   </div>
                   <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-gray-800 ${bot.status === 'active' ? 'bg-green-400 animate-pulse' : 'bg-gray-500'
                     }`}></div>
@@ -248,6 +263,16 @@ export const BotDetailsModal: React.FC<BotDetailsModalProps> = ({
             <StatCard icon={<Layers />} label="Grid Size" value={config.grid_size || config.api_response?.grid_size || '—'} color="blue" />
             <StatCard icon={<Clock />} label="Duration" value={getDuration()} color="cyan" />
             <StatCard icon={<Gauge />} label="Mode" value={getMode() === 'auto' ? 'Auto' : 'Manual'} color="green" />
+          </div>
+
+          {/* TradingView Chart */}
+          <div className="rounded-xl overflow-hidden">
+            <TradingViewChart
+              symbol={(config.symbol || bot.pair || 'BTCUSDT').replace('/', '')}
+              height={220}
+              interval="15"
+              showToolbar={false}
+            />
           </div>
 
           {/* Price Range */}
