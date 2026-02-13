@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '../ui/Card';
 import { Clock, TrendingUp, TrendingDown, Link2, Bot, ExternalLink } from 'lucide-react';
 import { apiService } from '../../utils/api';
@@ -14,6 +15,7 @@ interface ActivityItem {
 }
 
 export const RecentActivity: React.FC = () => {
+  const navigate = useNavigate();
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -21,12 +23,12 @@ export const RecentActivity: React.FC = () => {
     const fetchActivity = async () => {
       try {
         setLoading(true);
-        const [botsResponse, exchangesResponse] = await Promise.all([
+        const [botsResponse] = await Promise.all([
           apiService.getAllBots(),
           apiService.getConnectedExchanges()
         ]);
 
-  const combinedActivity: ActivityItem[] = [];
+        const combinedActivity: ActivityItem[] = [];
 
         // Process bot data
         const futuresBots = botsResponse.futures || [];
@@ -37,36 +39,36 @@ export const RecentActivity: React.FC = () => {
           combinedActivity.push({
             id: `bot-${bot.id}`,
             type: 'bot_created',
-            message: `${bot.symbol} ${bot.strategy_type === 'futures' ? 'Futures' : 'Spot'} Bot created on ${bot.exchange}`,
+            message: `${bot.symbol} ${bot.type === 'futures' ? 'Futures' : 'Spot'} Bot created on ${bot.exchange}`,
             date: new Date(bot.date_created),
             timestamp: formatDistanceToNow(new Date(bot.date_created), { addSuffix: true }),
           });
         });
 
-  // Generate realistic profit/loss activities based on bot performance
-  if (allBots.length > 0) {
+        // Generate realistic profit/loss activities based on bot performance
+        if (allBots.length > 0) {
           const now = new Date();
           const activeBots = allBots.filter((bot: any) => bot.is_running);
-          
+
           activeBots.forEach((bot: any, index: number) => {
-            const profit = bot.total_profit || bot.profit || 0;
+            const profit = bot.total_profit || bot.profit || bot.profit_loss || 0;
             const amount = parseFloat(bot.investment_amount) || 0;
             const performance = bot.performance_percentage || 0;
-            
+
             // Calculate display profit
             let displayProfit = profit;
             if (profit === 0 && amount > 0) {
               displayProfit = amount * (performance / 100);
             }
-            
+
             // Only add activity if there's meaningful profit/loss data
             if (Math.abs(displayProfit) > 0.01) {
               const activityDate = new Date(now.getTime() - (index + 1) * 2 * 60 * 60 * 1000); // Spread activities over time
-              
+
               combinedActivity.push({
                 id: `profit-${bot.id || index}`,
                 type: displayProfit >= 0 ? 'profit' : 'loss',
-                message: `${displayProfit >= 0 ? 'Profit' : 'Loss'} from ${bot.symbol || bot.exchange} ${bot.strategy_type === 'futures' ? 'Futures' : 'Spot'} Bot`,
+                message: `${displayProfit >= 0 ? 'Profit' : 'Loss'} from ${bot.symbol || bot.exchange} ${bot.type === 'futures' ? 'Futures' : 'Spot'} Bot`,
                 date: activityDate,
                 timestamp: formatDistanceToNow(activityDate, { addSuffix: true }),
                 amount: Math.abs(displayProfit)
@@ -74,14 +76,6 @@ export const RecentActivity: React.FC = () => {
             }
           });
         }
-
-        // If exchangesResponse includes connected exchanges, we could add exchange
-        // connected activities here in the future. Normalize shape to avoid errors.
-        const exchangesArray: any[] = Array.isArray(exchangesResponse)
-          ? exchangesResponse
-          : Array.isArray((exchangesResponse as any)?.exchanges)
-            ? (exchangesResponse as any).exchanges
-            : [];
 
         // Sort activities by date, most recent first
         combinedActivity.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -132,12 +126,15 @@ export const RecentActivity: React.FC = () => {
     <Card className="p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
         <h3 className="text-lg sm:text-xl font-semibold text-white">Recent Activity</h3>
-        <button className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center self-start sm:self-auto">
+        <button
+          onClick={() => navigate('/bots')}
+          className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center self-start sm:self-auto"
+        >
           View All
           <ExternalLink className="w-3 h-3 ml-1" />
         </button>
       </div>
-      
+
       <div className="space-y-3 sm:space-y-4">
         {loading ? (
           <div className="space-y-3">
@@ -153,8 +150,8 @@ export const RecentActivity: React.FC = () => {
           </div>
         ) : activity.length > 0 ? (
           activity.map((item) => (
-            <div 
-              key={item.id} 
+            <div
+              key={item.id}
               className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700/50 transition-colors border border-transparent hover:border-gray-600"
             >
               <div className={`flex-shrink-0 p-2 rounded-lg border ${getTypeColor(item.type)}`}>
@@ -166,9 +163,8 @@ export const RecentActivity: React.FC = () => {
               </div>
               {item.amount && (
                 <div className="flex-shrink-0">
-                  <span className={`text-sm sm:text-base font-medium ${
-                    item.type === 'profit' ? 'text-green-400' : 'text-red-400'
-                  }`}>
+                  <span className={`text-sm sm:text-base font-medium ${item.type === 'profit' ? 'text-green-400' : 'text-red-400'
+                    }`}>
                     {item.type === 'profit' ? '+' : '-'}${item.amount}
                   </span>
                 </div>
