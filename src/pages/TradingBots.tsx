@@ -9,6 +9,7 @@ import { BotDetailsModal } from '../components/dashboard/BotDetailsModal';
 import { GridPreview } from '../components/dashboard/GridPriceVisualization';
 import { PriceChart } from '../components/ui/PriceChart';
 import { apiService } from '../utils/api';
+import { getExchangeLogo, getExchangeGradient } from '../utils/exchangeLogos';
 import { useAuthStore } from '../store/authStore';
 import { Plus, TrendingUp, TrendingDown, Key, Eye, EyeOff, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -847,20 +848,45 @@ export const TradingBots: React.FC = () => {
 
           {/* Exchange Selection */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-300">Exchange</label>
-            <select
-              value={botForm.exchange}
-              onChange={(e) => setBotForm({ ...botForm, exchange: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-              required
-            >
-              <option value="">Select Exchange</option>
-              {supportedExchanges.map((exchange) => (
-                <option key={exchange.value} value={exchange.value}>
-                  {exchange.label}
-                </option>
-              ))}
-            </select>
+            <label className="input-label">Exchange</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {supportedExchanges.map((exchange) => {
+                const logoUrl = exchange.image || getExchangeLogo(exchange.value);
+                const isSelected = botForm.exchange === exchange.value;
+                return (
+                  <button
+                    key={exchange.value}
+                    type="button"
+                    onClick={() => setBotForm({ ...botForm, exchange: exchange.value })}
+                    className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all ${isSelected
+                        ? 'bg-[var(--color-primary)]/15 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]/30'
+                        : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-border-light)] hover:bg-[var(--color-surface-light)]'
+                      }`}
+                  >
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt={exchange.label}
+                        className="w-7 h-7 rounded-lg object-cover"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex'; }}
+                      />
+                    ) : null}
+                    <div
+                      className="w-7 h-7 rounded-lg items-center justify-center flex-shrink-0"
+                      style={{ display: logoUrl ? 'none' : 'flex', background: getExchangeGradient(exchange.value) }}
+                    >
+                      <span className="text-white font-bold text-xs">{exchange.label.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <span className={`text-sm font-medium truncate ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                      {exchange.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {!botForm.exchange && (
+              <input type="text" required value="" className="sr-only" tabIndex={-1} onChange={() => { }} />
+            )}
           </div>
 
           {/* API Credentials Section */}
